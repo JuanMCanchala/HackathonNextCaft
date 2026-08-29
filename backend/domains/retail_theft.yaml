@@ -32,6 +32,11 @@ vlm:
     - ocultamiento de producto
     - sustraccion sin pago
     - manipulacion de envase o etiqueta
+    # Mismo motivo que en agresion: un cliente que se desploma en el pasillo
+    # tenia como unica salida "comportamiento normal de compra", que descarta
+    # el incidente. La tienda es justo donde alguien puede caerse y quedarse
+    # solo un buen rato.
+    - caida o accidente
     - comportamiento normal de compra
     - ninguno
   focus: >
@@ -41,3 +46,7 @@ vlm:
     normal. Meterlo en una cesta o carrito de la tienda tambien es normal.
     Solo es incidente si el producto queda oculto sobre el cuerpo o dentro de
     un bolso personal.
+
+    Si lo que ves es una persona que cae o queda tendida en el suelo, eso no
+    es un robo: responde "caida o accidente". Atender a alguien en el suelo
+    importa mas que un producto.

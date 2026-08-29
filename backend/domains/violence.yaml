@@ -26,6 +26,12 @@ vlm:
     - agresion fisica
     - forcejeo o empujon
     - amenaza con objeto
+    # Sin esta opcion, alguien que se desploma solo delante de esta camara
+    # obligaba al modelo a elegir entre "agresion fisica", que es falso, e
+    # "interaccion no violenta", que esta en NO_INCIDENTE y descarta el
+    # incidente entero. Una urgencia medica se perdia en silencio. El tipo
+    # manda sobre el dominio, asi que esto entra en Convex como `fall`.
+    - caida o accidente
     - interaccion no violenta
     - ninguno
   focus: >
@@ -33,3 +39,8 @@ vlm:
     manos, gente bailando o jugando. Busca golpes dirigidos, empujones,
     agarres del cuello o la ropa, y personas que retroceden o caen. Si las dos
     personas mantienen postura relajada y sonrien, no es incidente.
+
+    Antes de llamarlo agresion, comprueba que alguien la ejerce. Si la persona
+    cae sin que nadie la toque (tropiezo, resbalon, desvanecimiento) o queda
+    en el suelo estando sola, responde "caida o accidente": sigue necesitando
+    atencion inmediata, pero no es lo mismo y no debe registrarse como tal.
