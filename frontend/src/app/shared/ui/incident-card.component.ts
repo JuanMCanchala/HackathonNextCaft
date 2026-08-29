@@ -19,7 +19,7 @@ import { HlmCardComponent, HlmCardContentComponent } from './primitives';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a [routerLink]="['/incidents', incident().id]" class="block transition hover:brightness-110">
+    <a [routerLink]="['/app/incidents', incident().id]" class="block transition hover:brightness-110">
       <hlm-card class="h-full gap-3 p-4 hover:border-primary/40">
         <div class="flex flex-wrap items-center gap-2">
           <app-status-badge kind="incident" [value]="incident().state" />

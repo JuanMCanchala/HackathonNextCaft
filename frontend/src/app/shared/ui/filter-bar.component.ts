@@ -6,7 +6,8 @@ import {
   INCIDENT_STATES,
   OPERATIONAL_SEVERITIES,
 } from '../../core/models/enums';
-import { HlmInputDirective } from './primitives';
+import { severityLabel, stateLabel } from '../copy/labels';
+import { HlmButtonDirective, HlmInputDirective } from './primitives';
 
 export type FilterBarMode = 'incidents' | 'cameras';
 
@@ -25,86 +26,112 @@ export interface CameraFilterValue {
 @Component({
   selector: 'app-filter-bar',
   standalone: true,
-  imports: [FormsModule, HlmInputDirective],
+  imports: [FormsModule, HlmInputDirective, HlmButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="sentra-panel flex flex-wrap items-end gap-3 p-4">
+    <div class="sentra-panel space-y-4 p-4">
       @if (mode() === 'incidents') {
-        <label class="text-xs text-muted-foreground">
-          Estado
-          <select
-            multiple
-            hlmInput
-            class="mt-1 block min-h-[5rem] min-w-[140px]"
-            [ngModel]="incidentFilters().state"
-            (ngModelChange)="onIncident('state', $event)"
-          >
+        <div class="space-y-2">
+          <div class="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Estado
+          </div>
+          <div class="flex flex-wrap gap-2">
             @for (s of states; track s) {
-              <option [value]="s">{{ s }}</option>
+              <button
+                type="button"
+                hlmBtn
+                size="sm"
+                [variant]="isSelected('state', s) ? 'default' : 'outline'"
+                class="capitalize"
+                (click)="toggleIncident('state', s)"
+              >
+                {{ stateLabel(s) }}
+              </button>
             }
-          </select>
-        </label>
-        <label class="text-xs text-muted-foreground">
-          Severidad
-          <select
-            multiple
-            hlmInput
-            class="mt-1 block min-h-[5rem] min-w-[140px]"
-            [ngModel]="incidentFilters().severity"
-            (ngModelChange)="onIncident('severity', $event)"
-          >
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Severidad
+          </div>
+          <div class="flex flex-wrap gap-2">
             @for (s of severities; track s) {
-              <option [value]="s">{{ s }}</option>
+              <button
+                type="button"
+                hlmBtn
+                size="sm"
+                [variant]="isSelected('severity', s) ? 'default' : 'outline'"
+                class="capitalize"
+                (click)="toggleIncident('severity', s)"
+              >
+                {{ severityLabel(s) }}
+              </button>
             }
-          </select>
-        </label>
-        <label class="text-xs text-muted-foreground">
-          Categoría
-          <input
-            hlmInput
-            class="mt-1 w-40"
-            [ngModel]="incidentFilters().category"
-            (ngModelChange)="onIncident('category', $event)"
-          />
-        </label>
-        <label class="text-xs text-muted-foreground">
-          Cámara
-          <input
-            hlmInput
-            class="mt-1 w-40 font-mono"
-            [ngModel]="incidentFilters().cameraId"
-            (ngModelChange)="onIncident('cameraId', $event)"
-          />
-        </label>
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="block text-xs text-muted-foreground">
+            Categoría
+            <input
+              hlmInput
+              class="mt-2"
+              placeholder="intrusion, fall…"
+              [ngModel]="incidentFilters().category"
+              (ngModelChange)="onIncident('category', $event)"
+            />
+          </label>
+          <label class="block text-xs text-muted-foreground">
+            Cámara
+            <input
+              hlmInput
+              class="mt-2 font-mono"
+              placeholder="ID de cámara"
+              [ngModel]="incidentFilters().cameraId"
+              (ngModelChange)="onIncident('cameraId', $event)"
+            />
+          </label>
+        </div>
+
+        @if (hasIncidentFilters()) {
+          <button type="button" hlmBtn variant="ghost" size="sm" (click)="clearIncidentFilters()">
+            Limpiar filtros
+          </button>
+        }
       } @else {
-        <label class="text-xs text-muted-foreground">
-          Admin
-          <select
-            hlmInput
-            class="mt-1 block min-w-[140px]"
-            [ngModel]="cameraFilters().adminStatus"
-            (ngModelChange)="onCamera('adminStatus', $event)"
-          >
-            <option value="">Todos</option>
-            @for (s of adminStatuses; track s) {
-              <option [value]="s">{{ s }}</option>
-            }
-          </select>
-        </label>
-        <label class="text-xs text-muted-foreground">
-          Conectividad
-          <select
-            hlmInput
-            class="mt-1 block min-w-[140px]"
-            [ngModel]="cameraFilters().connectivity"
-            (ngModelChange)="onCamera('connectivity', $event)"
-          >
-            <option value="">Todos</option>
-            @for (s of connectivities; track s) {
-              <option [value]="s">{{ s }}</option>
-            }
-          </select>
-        </label>
+        <div class="grid gap-4" [class.sm:grid-cols-2]="showCameraConnectivity()">
+          <label class="block text-xs text-muted-foreground">
+            Admin
+            <select
+              hlmInput
+              class="mt-2"
+              [ngModel]="cameraFilters().adminStatus"
+              (ngModelChange)="onCamera('adminStatus', $event)"
+            >
+              <option value="">Todos</option>
+              @for (s of adminStatuses; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+          </label>
+          @if (showCameraConnectivity()) {
+            <label class="block text-xs text-muted-foreground">
+              Conectividad
+              <select
+                hlmInput
+                class="mt-2"
+                [ngModel]="cameraFilters().connectivity"
+                (ngModelChange)="onCamera('connectivity', $event)"
+              >
+                <option value="">Todos</option>
+                @for (s of connectivities; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
+              </select>
+            </label>
+          }
+        </div>
       }
     </div>
   `,
@@ -118,6 +145,7 @@ export class FilterBarComponent {
     cameraId: '',
   });
   readonly cameraFilters = input<CameraFilterValue>({ adminStatus: '', connectivity: '' });
+  readonly showCameraConnectivity = input(true);
   readonly incidentChange = output<IncidentFilterValue>();
   readonly cameraChange = output<CameraFilterValue>();
 
@@ -125,6 +153,35 @@ export class FilterBarComponent {
   readonly severities = OPERATIONAL_SEVERITIES;
   readonly adminStatuses = CAMERA_ADMIN_STATUSES;
   readonly connectivities = CAMERA_CONNECTIVITIES;
+
+  readonly stateLabel = stateLabel;
+  readonly severityLabel = severityLabel;
+
+  isSelected(key: 'state' | 'severity', value: string): boolean {
+    return this.incidentFilters()[key].includes(value);
+  }
+
+  toggleIncident(key: 'state' | 'severity', value: string): void {
+    const current = [...this.incidentFilters()[key]];
+    const idx = current.indexOf(value);
+    if (idx >= 0) current.splice(idx, 1);
+    else current.push(value);
+    this.onIncident(key, current);
+  }
+
+  hasIncidentFilters(): boolean {
+    const f = this.incidentFilters();
+    return (
+      f.state.length > 0 ||
+      f.severity.length > 0 ||
+      f.category.trim().length > 0 ||
+      f.cameraId.trim().length > 0
+    );
+  }
+
+  clearIncidentFilters(): void {
+    this.incidentChange.emit({ state: [], severity: [], category: '', cameraId: '' });
+  }
 
   onIncident(key: keyof IncidentFilterValue, value: string | string[]): void {
     this.incidentChange.emit({ ...this.incidentFilters(), [key]: value });

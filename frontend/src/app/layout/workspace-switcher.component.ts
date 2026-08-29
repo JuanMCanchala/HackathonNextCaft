@@ -23,8 +23,6 @@ import { HlmInputDirective } from '../shared/ui/primitives';
           }
         </select>
       </label>
-    } @else if (workspace.activeWorkspace(); as ws) {
-      <span class="text-xs text-muted-foreground">{{ ws.name }}</span>
     }
   `,
 })

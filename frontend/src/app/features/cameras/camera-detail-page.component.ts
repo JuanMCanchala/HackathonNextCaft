@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, OnInit } from '@angular/core';
+import { BACKEND_CAPABILITIES } from '../../core/config/backend-capabilities';
 import { CameraStore } from './camera.store';
 import { CameraDetailStore } from './camera-detail.store';
 import { WorkspaceContextService } from '../../core/workspace/workspace-context.service';
@@ -36,11 +37,13 @@ import { adminStatusLabel } from '../../shared/copy/labels';
         </div>
 
         <div class="flex flex-wrap gap-3">
-          <app-status-badge kind="connectivity" [value]="cam.connectivity" />
+          @if (caps.cameraConnectivity) {
+            <app-status-badge kind="connectivity" [value]="cam.connectivity" />
+            <span class="font-mono text-xs text-[var(--sentra-text-low)]">
+              HB {{ cam.lastHeartbeatAt || '—' }}
+            </span>
+          }
           <span class="text-xs text-[var(--sentra-text-mid)]">{{ adminStatusLabel(cam.adminStatus) }}</span>
-          <span class="font-mono text-xs text-[var(--sentra-text-low)]">
-            HB {{ cam.lastHeartbeatAt || '—' }}
-          </span>
         </div>
 
         <div
@@ -97,6 +100,7 @@ export class CameraDetailPageComponent implements OnInit {
   readonly id = input.required<string>();
   readonly cameraStore = inject(CameraStore);
   readonly detailStore = inject(CameraDetailStore);
+  readonly caps = inject(BACKEND_CAPABILITIES);
   private readonly workspace = inject(WorkspaceContextService);
   protected readonly adminStatusLabel = adminStatusLabel;
 

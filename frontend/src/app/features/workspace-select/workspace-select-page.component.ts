@@ -139,7 +139,7 @@ export class WorkspaceSelectPageComponent {
     const demo = await this.workspace.tryJoinDemo();
     if (demo !== null && this.workspace.workspaces().length <= 1) {
       this.workspace.setWorkspace(demo);
-      void this.router.navigate(['/']);
+      void this.router.navigate(['/app']);
       return;
     }
     if (demo !== null) {
@@ -189,4 +189,3 @@ export class WorkspaceSelectPageComponent {
     }
   }
 }
-

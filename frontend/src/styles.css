@@ -1,48 +1,49 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+@layer theme, base, clerk, components, utilities;
+
 @import 'tailwindcss';
 
-/* ─── Sentra design tokens (dark-first) ─────────────────────────────────── */
-:root,
+/* ─── Tokens compartidos ─────────────────────────────────────────────────── */
+:root {
+  --sentra-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --sentra-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --sentra-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sentra-radius: 6px;
+  --sentra-radius-lg: 10px;
+
+  --sentra-severity-low: #6b7a99;
+  --sentra-severity-medium: #ffb020;
+  --sentra-severity-high: #ff8c42;
+  --sentra-severity-critical: #ff4d5e;
+  --sentra-ok: #2fe08a;
+  --sentra-warn: #ffb020;
+}
+
+/* ─── Tema oscuro (default) ──────────────────────────────────────────────── */
 html[data-theme='dark'] {
-  /* Surfaces */
   --sentra-bg-void: #0a0e17;
   --sentra-bg-panel: #111827;
   --sentra-bg-panel-2: #161f33;
   --sentra-line: #232e47;
   --sentra-line-bright: #2f3d5e;
 
-  /* Text */
   --sentra-text-hi: #e9edf6;
   --sentra-text-mid: #a6b0c8;
   --sentra-text-low: #5c6884;
 
-  /* Brand / signal */
   --sentra-signal-cyan: #22e0ff;
   --sentra-signal-cyan-dim: rgba(34, 224, 255, 0.14);
-  --sentra-ok: #2fe08a;
   --sentra-ok-dim: rgba(47, 224, 138, 0.14);
-  --sentra-warn: #ffb020;
   --sentra-warn-dim: rgba(255, 176, 32, 0.14);
-
-  /* Severity (rojo solo critical — RNF-UX-2) */
-  --sentra-severity-low: #6b7a99;
-  --sentra-severity-medium: #ffb020;
-  --sentra-severity-high: #ff8c42;
-  --sentra-severity-critical: #ff4d5e;
   --sentra-severity-critical-dim: rgba(255, 77, 94, 0.14);
 
-  /* Typography */
-  --sentra-font-display: 'Space Grotesk', system-ui, sans-serif;
-  --sentra-font-body: 'IBM Plex Sans', system-ui, sans-serif;
-  --sentra-font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  /* Shape */
-  --sentra-radius: 6px;
-  --sentra-radius-lg: 10px;
   --sentra-shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --sentra-body-glow-a: rgba(34, 224, 255, 0.05);
+  --sentra-body-glow-b: rgba(255, 77, 94, 0.04);
+  --sentra-landing-grid: rgba(35, 46, 71, 0.45);
+  --sentra-scanline-opacity: 0.35;
 
-  /* Spartan / shadcn bridge (mapeo 1:1 con tokens Sentra) */
   --background: var(--sentra-bg-void);
   --foreground: var(--sentra-text-hi);
   --card: var(--sentra-bg-panel);
@@ -70,18 +71,55 @@ html[data-theme='dark'] {
   --sidebar-accent-foreground: var(--sentra-signal-cyan);
 }
 
+/* ─── Tema claro ─────────────────────────────────────────────────────────── */
 html[data-theme='light'] {
   --sentra-bg-void: #f0f3f8;
   --sentra-bg-panel: #ffffff;
   --sentra-bg-panel-2: #e8edf5;
   --sentra-line: #d0d7e6;
   --sentra-line-bright: #b8c2d6;
+
   --sentra-text-hi: #0f1520;
   --sentra-text-mid: #4a5568;
   --sentra-text-low: #7a869c;
+
   --sentra-signal-cyan: #0891b2;
   --sentra-signal-cyan-dim: rgba(8, 145, 178, 0.12);
+  --sentra-ok-dim: rgba(47, 224, 138, 0.18);
+  --sentra-warn-dim: rgba(255, 176, 32, 0.2);
+  --sentra-severity-critical-dim: rgba(255, 77, 94, 0.12);
+
+  --sentra-shadow-panel: 0 1px 0 rgba(0, 0, 0, 0.04), 0 4px 20px rgba(15, 21, 32, 0.08);
+  --sentra-body-glow-a: rgba(8, 145, 178, 0.08);
+  --sentra-body-glow-b: rgba(255, 77, 94, 0.05);
+  --sentra-landing-grid: rgba(176, 186, 206, 0.55);
+  --sentra-scanline-opacity: 0.12;
+
+  --background: var(--sentra-bg-void);
+  --foreground: var(--sentra-text-hi);
+  --card: var(--sentra-bg-panel);
+  --card-foreground: var(--sentra-text-hi);
+  --popover: var(--sentra-bg-panel);
+  --popover-foreground: var(--sentra-text-hi);
+  --primary: var(--sentra-signal-cyan);
   --primary-foreground: #ffffff;
+  --secondary: var(--sentra-bg-panel-2);
+  --secondary-foreground: var(--sentra-text-hi);
+  --muted: var(--sentra-bg-panel-2);
+  --muted-foreground: var(--sentra-text-mid);
+  --accent: var(--sentra-signal-cyan-dim);
+  --accent-foreground: var(--sentra-signal-cyan);
+  --destructive: var(--sentra-severity-critical);
+  --destructive-foreground: #fff;
+  --border: var(--sentra-line);
+  --input: var(--sentra-line-bright);
+  --ring: var(--sentra-signal-cyan);
+  --radius: var(--sentra-radius);
+  --sidebar: var(--sentra-bg-panel);
+  --sidebar-foreground: var(--sentra-text-hi);
+  --sidebar-border: var(--sentra-line);
+  --sidebar-accent: var(--sentra-signal-cyan-dim);
+  --sidebar-accent-foreground: var(--sentra-signal-cyan);
 }
 
 @theme inline {
@@ -130,8 +168,12 @@ body {
 
 body {
   background-image:
-    radial-gradient(circle at 15% 0%, rgba(34, 224, 255, 0.05), transparent 40%),
-    radial-gradient(circle at 85% 100%, rgba(255, 77, 94, 0.04), transparent 45%);
+    radial-gradient(circle at 15% 0%, var(--sentra-body-glow-a), transparent 40%),
+    radial-gradient(circle at 85% 100%, var(--sentra-body-glow-b), transparent 45%);
+}
+
+.sentra-auth-shell {
+  color-scheme: light;
 }
 
 .font-mono {
@@ -196,5 +238,36 @@ body {
 
   .sentra-badge {
     @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  button:not(:disabled),
+  a[hlmBtn] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Clerk auth — refuerzo si Tailwind pisa inputs del SignIn */
+@layer clerk {
+  .cl-formFieldInput,
+  .cl-input {
+    color: #0f1520 !important;
+    background-color: #ffffff !important;
+  }
+
+  .cl-formButtonPrimary {
+    color: #ffffff !important;
+  }
+
+  .sentra-clerk-profile .cl-rootBox,
+  .sentra-clerk-profile .cl-cardBox,
+  .sentra-clerk-profile .cl-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--sentra-radius-lg) !important;
+    overflow: hidden;
   }
 }
