@@ -61,17 +61,17 @@ main
 
 ## Phase 4: Domain helpers
 
-- [ ] 4.1 RED→GREEN: `normalize.ts` allowlist/confidence/[0,1]/RFC3339→ms. (intake validate)
-- [ ] 4.2 RED→GREEN: `group.ts` 45s; only detected|triaged; late→new. (Group)
-- [ ] 4.3 RED→GREEN: `severity.ts` sev-v1; missing rule fail-closed. (Severity)
-- [ ] 4.4 RED→GREEN: `transition.ts` only detected→triaged; reject ack/resolve/dismiss. (Freeze)
+- [x] 4.1 RED→GREEN: `normalize.ts` allowlist/confidence/[0,1]/RFC3339→ms. (intake validate)
+- [x] 4.2 RED→GREEN: `group.ts` 45s; only detected|triaged; late→new. (Group)
+- [x] 4.3 RED→GREEN: `severity.ts` sev-v1; missing rule fail-closed. (Severity)
+- [x] 4.4 RED→GREEN: `transition.ts` only detected→triaged; reject ack/resolve/dismiss. (Freeze)
 
 ## Phase 5: Intake + grouping
 
-- [ ] 5.1 RED: public/browser blocked; ownership mismatch no write. (Non-browser)
-- [ ] 5.2 GREEN: `detections.ts` `acceptNormalized` internalMutation; one txn. (Auth+validate)
-- [ ] 5.3 RED→GREEN: replay stable; mismatch IDEMPOTENCY_CONFLICT; concurrent one row. (Idempotent)
-- [ ] 5.4 RED→GREEN: first create detected+severity; match groups; evidence never privileged. (Group; Evidence)
+- [x] 5.1 RED: public/browser blocked; ownership mismatch no write. (Non-browser)
+- [x] 5.2 GREEN: `detections.ts` `acceptNormalized` internalMutation; one txn. (Auth+validate)
+- [x] 5.3 RED→GREEN: replay stable; mismatch IDEMPOTENCY_CONFLICT; concurrent one row. (Idempotent)
+- [x] 5.4 RED→GREEN: first create detected+severity; match groups; evidence never privileged. (Group; Evidence)
 
 ## Phase 6: Incidents
 
