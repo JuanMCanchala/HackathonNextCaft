@@ -1,0 +1,30 @@
+id: fall_detection
+label: Caidas
+description: >
+  Detecta caidas y ausencia de recuperacion en residencias, hospitales y
+  espacios publicos. Un tropiezo del que la persona se levanta no es incidente.
+
+threshold: 0.5
+sustain_seconds: 0.4
+cooldown_seconds: 20
+min_track_seconds: 1.5
+
+weights:
+  fall: 0.62
+  immobility: 0.38
+
+require:
+  fall: 0.36
+
+vlm:
+  taxonomy:
+    - caida con perdida de movilidad
+    - caida con recuperacion
+    - persona en el suelo sin caida previa
+    - postura normal
+    - ninguno
+  focus: >
+    Confirma si la persona marcada pasa de estar de pie a estar en el suelo de
+    forma no controlada, y si logra levantarse despues. Sentarse en el suelo,
+    agacharse, atarse los cordones o recoger algo NO son caidas. Lo critico es
+    que quede inmovil en el suelo: eso exige atencion inmediata.

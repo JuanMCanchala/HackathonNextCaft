@@ -1,0 +1,31 @@
+id: violence
+label: Agresion y rina
+description: >
+  Detecta agresiones fisicas en espacios publicos: transporte, campus, eventos.
+  Combina energia de movimiento con cercania entre dos personas.
+
+threshold: 0.55
+sustain_seconds: 0.5
+cooldown_seconds: 15
+min_track_seconds: 1.0
+
+weights:
+  motion: 0.55
+  proximity: 0.45
+
+require:
+  motion: 0.42
+  proximity: 0.38
+
+vlm:
+  taxonomy:
+    - agresion fisica
+    - forcejeo o empujon
+    - amenaza con objeto
+    - interaccion no violenta
+    - ninguno
+  focus: >
+    Distingue una agresion real de un saludo efusivo, un abrazo, un choque de
+    manos, gente bailando o jugando. Busca golpes dirigidos, empujones,
+    agarres del cuello o la ropa, y personas que retroceden o caen. Si las dos
+    personas mantienen postura relajada y sonrien, no es incidente.

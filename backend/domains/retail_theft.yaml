@@ -1,0 +1,34 @@
+id: retail_theft
+label: Robo en tienda
+description: >
+  Detecta ocultamiento de producto en ropa, bolsos o carritos. El disparo busca
+  el patron de alcanzar un estante y llevar la mano al torso, no la identidad
+  de la persona.
+
+threshold: 0.52
+sustain_seconds: 0.7
+cooldown_seconds: 25
+min_track_seconds: 2.0
+
+weights:
+  concealment: 0.62
+  dwell: 0.26
+  motion: 0.12
+
+require:
+  concealment: 0.34
+
+vlm:
+  taxonomy:
+    - ocultamiento de producto
+    - sustraccion sin pago
+    - manipulacion de envase o etiqueta
+    - comportamiento normal de compra
+    - ninguno
+  focus: >
+    Fijate en las manos del sujeto marcado y en si un producto pasa del estante
+    a su ropa, bolso, carrito o cuerpo y NO vuelve al estante ni a una cesta de
+    compra visible. Coger un producto, mirarlo y devolverlo es comportamiento
+    normal. Meterlo en una cesta o carrito de la tienda tambien es normal.
+    Solo es incidente si el producto queda oculto sobre el cuerpo o dentro de
+    un bolso personal.

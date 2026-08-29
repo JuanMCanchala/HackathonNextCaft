@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+node_modules/
+dist/
+*.pt
+data/clips/*
+data/events.jsonl
+!data/clips/.gitkeep

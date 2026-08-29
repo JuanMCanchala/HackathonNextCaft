@@ -1,0 +1,285 @@
+"""Etapa 1: senales geometricas sobre las tracks de pose.
+
+Todo se normaliza por el largo del torso, asi las senales no dependen de a que
+distancia esta la persona de la camara. Cada senal devuelve un valor en [0, 1].
+"""
+from __future__ import annotations
+
+from collections import deque
+
+import numpy as np
+
+from .schemas import (
+    L_ANKLE, L_HIP, L_SHOULDER, L_WRIST,
+    R_ANKLE, R_HIP, R_SHOULDER, R_WRIST,
+)
+
+KP_CONF = 0.3
+HISTORY_SECONDS = 6.0
+
+
+def _pt(kp: np.ndarray, idx: int):
+    """Keypoint como (x, y) o None si la confianza es baja."""
+    if kp is None or kp.shape[0] <= idx:
+        return None
+    x, y, c = kp[idx]
+    if c < KP_CONF:
+        return None
+    return np.array([x, y], dtype=np.float32)
+
+
+def _mid(a, b):
+    if a is None or b is None:
+        return a if b is None else b
+    return (a + b) / 2.0
+
+
+def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
+    return max(lo, min(hi, v))
+
+
+class Sample:
+    """Un frame de una persona: caja, keypoints y magnitudes derivadas."""
+
+    __slots__ = ("t", "bbox", "kp", "scale", "sh_mid", "hip_mid", "center")
+
+    def __init__(self, t: float, bbox: np.ndarray, kp: np.ndarray):
+        self.t = t
+        self.bbox = bbox
+        self.kp = kp
+        self.sh_mid = _mid(_pt(kp, L_SHOULDER), _pt(kp, R_SHOULDER))
+        self.hip_mid = _mid(_pt(kp, L_HIP), _pt(kp, R_HIP))
+        self.center = np.array(
+            [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0], dtype=np.float32
+        )
+        self.scale = self._scale()
+
+    def _scale(self) -> float:
+        """Largo del torso; si no hay keypoints fiables, cae a la altura de la caja."""
+        if self.sh_mid is not None and self.hip_mid is not None:
+            d = float(np.linalg.norm(self.sh_mid - self.hip_mid))
+            if d > 8.0:
+                return d
+        return max(float(self.bbox[3] - self.bbox[1]) * 0.3, 12.0)
+
+    @property
+    def horizontality(self) -> float:
+        """1.0 = torso horizontal (tumbado), 0.0 = de pie."""
+        if self.sh_mid is not None and self.hip_mid is not None:
+            v = self.hip_mid - self.sh_mid
+            n = float(np.linalg.norm(v))
+            if n > 4.0:
+                return _clamp(abs(float(v[0])) / n)
+        w = float(self.bbox[2] - self.bbox[0])
+        h = max(float(self.bbox[3] - self.bbox[1]), 1.0)
+        return _clamp((w / h - 0.8) / 0.9)
+
+    def wrist_in_torso_zone(self) -> bool:
+        """Mano sobre el torso o cintura: proxy de ocultamiento."""
+        lh, rh = _pt(self.kp, L_HIP), _pt(self.kp, R_HIP)
+        if lh is None or rh is None or self.sh_mid is None or self.hip_mid is None:
+            return False
+        x_min, x_max = min(lh[0], rh[0]), max(lh[0], rh[0])
+        hip_w = max(x_max - x_min, self.scale * 0.35)
+        pad = hip_w * 0.18
+        y_top = self.sh_mid[1]
+        y_bot = self.hip_mid[1] + self.scale * 0.28
+        for idx in (L_WRIST, R_WRIST):
+            w = _pt(self.kp, idx)
+            if w is None:
+                continue
+            if x_min - pad <= w[0] <= x_max + pad and y_top <= w[1] <= y_bot:
+                return True
+        return False
+
+    def wrist_extended(self) -> bool:
+        """Mano lejos del torso: alcanzando un estante o un objeto."""
+        if self.sh_mid is None:
+            return False
+        for idx in (L_WRIST, R_WRIST):
+            w = _pt(self.kp, idx)
+            if w is None:
+                continue
+            if float(np.linalg.norm(w - self.sh_mid)) > self.scale * 1.05:
+                return True
+        return False
+
+    def foot_point(self) -> np.ndarray:
+        m = _mid(_pt(self.kp, L_ANKLE), _pt(self.kp, R_ANKLE))
+        if m is not None:
+            return m
+        return np.array(
+            [(self.bbox[0] + self.bbox[2]) / 2.0, self.bbox[3]], dtype=np.float32
+        )
+
+
+class TrackHistory:
+    def __init__(self, track_id: int):
+        self.id = track_id
+        self.samples: deque[Sample] = deque(maxlen=300)
+        self.first_seen = 0.0
+        self.last_seen = 0.0
+
+    def push(self, t: float, bbox: np.ndarray, kp: np.ndarray) -> None:
+        if not self.samples:
+            self.first_seen = t
+        self.samples.append(Sample(t, bbox, kp))
+        self.last_seen = t
+        while self.samples and t - self.samples[0].t > HISTORY_SECONDS:
+            self.samples.popleft()
+
+    @property
+    def latest(self) -> Sample | None:
+        return self.samples[-1] if self.samples else None
+
+    def since(self, seconds: float) -> list[Sample]:
+        if not self.samples:
+            return []
+        cut = self.last_seen - seconds
+        return [s for s in self.samples if s.t >= cut]
+
+    def between(self, older: float, newer: float) -> list[Sample]:
+        if not self.samples:
+            return []
+        hi = self.last_seen - newer
+        lo = self.last_seen - older
+        return [s for s in self.samples if lo <= s.t <= hi]
+
+    def speed(self, window: list[Sample]) -> float:
+        """Velocidad pico de keypoints, en largos-de-torso por segundo."""
+        if len(window) < 2:
+            return 0.0
+        peak = 0.0
+        for a, b in zip(window, window[1:]):
+            dt = b.t - a.t
+            if dt <= 1e-3:
+                continue
+            mask = (a.kp[:, 2] > KP_CONF) & (b.kp[:, 2] > KP_CONF)
+            if mask.sum() >= 4:
+                d = float(np.linalg.norm(b.kp[mask, :2] - a.kp[mask, :2], axis=1).mean())
+            else:
+                d = float(np.linalg.norm(b.center - a.center))
+            peak = max(peak, d / dt / max(b.scale, 1.0))
+        return peak
+
+
+# --------------------------------------------------------------------------
+# Senales. Firma uniforme: f(hist, ctx) -> float en [0, 1]
+# --------------------------------------------------------------------------
+
+def sig_concealment(hist: TrackHistory, ctx: dict) -> float:
+    """Mano que va del exterior hacia el torso y se queda ahi."""
+    recent = hist.since(1.6)
+    if len(recent) < 5:
+        return 0.0
+    frac = sum(1 for s in recent if s.wrist_in_torso_zone()) / len(recent)
+    prior = hist.between(4.0, 1.6)
+    reached = any(s.wrist_extended() for s in prior)
+    # Sin el gesto previo de alcanzar, una mano en la cintura es solo postura.
+    return _clamp(frac if reached else frac * 0.3)
+
+
+def sig_motion(hist: TrackHistory, ctx: dict) -> float:
+    """Energia de movimiento pico: forcejeos, golpes, carreras."""
+    return _clamp(hist.speed(hist.since(0.8)) / 4.5)
+
+
+def sig_proximity(hist: TrackHistory, ctx: dict) -> float:
+    """Cercania fisica con otra persona."""
+    me = hist.latest
+    if me is None:
+        return 0.0
+    best = 0.0
+    for other in ctx.get("tracks", {}).values():
+        if other.id == hist.id or other.latest is None:
+            continue
+        if ctx["now"] - other.last_seen > 0.5:
+            continue
+        d = float(np.linalg.norm(me.center - other.latest.center))
+        norm = d / max((me.scale + other.latest.scale) / 2.0, 1.0)
+        best = max(best, _clamp((3.2 - norm) / 2.0))
+    return best
+
+
+def sig_fall(hist: TrackHistory, ctx: dict) -> float:
+    """Caida: estaba de pie, baja rapido y queda horizontal."""
+    recent = hist.since(0.6)
+    prior = hist.between(2.8, 1.2)
+    if len(recent) < 3 or len(prior) < 3:
+        return 0.0
+    horiz_now = float(np.mean([s.horizontality for s in recent]))
+    if horiz_now < 0.3:
+        return 0.0
+    horiz_before = float(np.mean([s.horizontality for s in prior]))
+    y_now = float(np.mean([s.center[1] / s.scale for s in recent]))
+    y_before = float(np.mean([s.center[1] / s.scale for s in prior]))
+    drop = _clamp((y_now - y_before) / 1.1)
+    was_upright = _clamp(1.0 - horiz_before / 0.45)
+    return _clamp((0.55 * horiz_now + 0.45 * drop) * (0.4 + 0.6 * was_upright))
+
+
+def sig_immobility(hist: TrackHistory, ctx: dict) -> float:
+    """Quieto en el suelo: distingue una caida real de un tropiezo."""
+    window = hist.since(2.5)
+    if len(window) < 8:
+        return 0.0
+    still = _clamp(1.0 - hist.speed(window) / 0.7)
+    span = _clamp((window[-1].t - window[0].t) / 2.5)
+    return still * span
+
+
+def sig_dwell(hist: TrackHistory, ctx: dict) -> float:
+    """Permanencia prolongada en el mismo punto."""
+    window = hist.since(HISTORY_SECONDS)
+    if len(window) < 10:
+        return 0.0
+    centers = np.array([s.center / s.scale for s in window])
+    spread = float(np.linalg.norm(centers.max(axis=0) - centers.min(axis=0)))
+    stationary = _clamp(1.0 - spread / 2.2)
+    span = _clamp((window[-1].t - window[0].t) / 5.0)
+    return stationary * span
+
+
+def _point_in_poly(x: float, y: float, poly: np.ndarray) -> bool:
+    inside = False
+    n = len(poly)
+    j = n - 1
+    for i in range(n):
+        xi, yi = poly[i]
+        xj, yj = poly[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi + 1e-9) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def sig_zone(hist: TrackHistory, ctx: dict) -> float:
+    """Pisada dentro de una zona restringida definida por el operador."""
+    zones = ctx.get("zones") or []
+    me = hist.latest
+    if not zones or me is None:
+        return 0.0
+    h, w = ctx["frame_shape"][:2]
+    foot = me.foot_point()
+    px, py = float(foot[0]) / max(w, 1), float(foot[1]) / max(h, 1)
+    for poly in zones:
+        if _point_in_poly(px, py, np.array(poly, dtype=np.float32)):
+            return 1.0
+    return 0.0
+
+
+def sig_presence(hist: TrackHistory, ctx: dict) -> float:
+    """Constante: habilita auditorias periodicas con el VLM, p.ej. control de EPP."""
+    return 1.0 if hist.latest is not None else 0.0
+
+
+SIGNALS = {
+    "concealment": sig_concealment,
+    "motion": sig_motion,
+    "proximity": sig_proximity,
+    "fall": sig_fall,
+    "immobility": sig_immobility,
+    "dwell": sig_dwell,
+    "zone": sig_zone,
+    "presence": sig_presence,
+}

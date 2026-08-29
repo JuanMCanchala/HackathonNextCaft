@@ -1,0 +1,33 @@
+id: industrial_safety
+label: Seguridad industrial
+description: >
+  Auditoria periodica de EPP (casco, chaleco, guantes), invasion de zona
+  restringida y caidas en obra o planta. La comprobacion de EPP la hace el VLM,
+  que no necesita un detector entrenado para cada prenda.
+
+threshold: 0.45
+sustain_seconds: 1.0
+cooldown_seconds: 45
+min_track_seconds: 2.0
+
+weights:
+  presence: 0.30
+  dwell: 0.25
+  zone: 0.30
+  fall: 0.15
+
+vlm:
+  taxonomy:
+    - falta de equipo de proteccion
+    - invasion de zona restringida
+    - caida o accidente
+    - trabajo conforme a norma
+    - ninguno
+  focus: >
+    Comprueba si la persona marcada lleva casco y chaleco reflectante visibles.
+    Si los lleva y no hay nada anomalo, responde que el trabajo es conforme.
+    Reporta incidente solo ante ausencia clara de EPP, presencia en una zona
+    marcada como restringida, o una caida.
+
+# Poligonos en coordenadas normalizadas [0-1]. Vacio = sin zona restringida.
+zones: []
