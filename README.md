@@ -78,10 +78,23 @@ Cada vertical es un YAML en `backend/domains/`. Anadir una no toca Python.
 ```powershell
 # 1. Dependencias
 py -3.13 -m venv .venv
-.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 cd frontend; npm install; cd ..
+```
 
+> **Sobre la GPU.** `requirements.txt` trae torch desde PyPI, que en Windows es
+> CPU-only. YOLO11n-pose en CPU da 10-15 FPS, de sobra para la Etapa 0. Para usar
+> la GPU hace falta el indice propio de PyTorch:
+>
+> ```powershell
+> .venv\Scripts\python.exe -m pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu124
+> ```
+>
+> Ese indice se quedo colgado a 0 bytes en la red de la hackathon. Si no baja, no
+> insistas: deja `SENTINEL_DEVICE=cpu` y sigue. La GPU no es el cuello de botella
+> de este sistema, la latencia del VLM lo es.
+
+```powershell
 # 2. Configuracion
 copy .env.example .env      # y pon tu GEMINI_API_KEY
 

@@ -13,19 +13,20 @@ from .. import config
 from .schemas import Event
 
 
-def write_clip(frames: list[np.ndarray], path, fps: float = 6.0) -> bool:
-    if not frames:
-        return False
-    h, w = frames[0].shape[:2]
-    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"avc1"), fps, (w, h))
-    if not writer.isOpened():
-        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
-    if not writer.isOpened():
-        return False
-    for frame in frames:
-        writer.write(frame if frame.shape[:2] == (h, w) else cv2.resize(frame, (w, h)))
-    writer.release()
-    return True
+def write_frames(frames: list[np.ndarray], event_id: str) -> list[str]:
+    """Guarda la evidencia como JPEG sueltos, no como video.
+
+    OpenCV en Windows solo consigue escribir mp4v, que Chrome no reproduce: el
+    clip se veria en negro. Una tira de frames que el navegador anima siempre
+    funciona, y ademas deja al operador ir fotograma a fotograma.
+    """
+    names: list[str] = []
+    for i, frame in enumerate(frames):
+        name = f"{event_id}_{i:02d}.jpg"
+        if cv2.imwrite(str(config.CLIPS_DIR / name), frame,
+                       [cv2.IMWRITE_JPEG_QUALITY, 82]):
+            names.append(name)
+    return names
 
 
 class EventStore:

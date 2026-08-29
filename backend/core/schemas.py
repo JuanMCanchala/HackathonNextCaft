@@ -39,7 +39,6 @@ class Event(BaseModel):
     signals: dict[str, float]
     status: Literal["analyzing", "incident", "dismissed", "error"] = "analyzing"
     verdict: Verdict | None = None
-    clip: str | None = None
-    thumb: str | None = None
+    frames: list[str] = []
     feedback: Literal["confirmed", "false_positive"] | None = None
     latency_ms: int | None = None

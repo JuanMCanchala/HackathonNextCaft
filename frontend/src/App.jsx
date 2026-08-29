@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, Eye, HardHat, Layers,
-  PersonStanding, Radio, ShieldCheck, ShoppingBag, Swords, ThumbsDown,
+  Pause, PersonStanding, Play, Radio, ShieldCheck, ShoppingBag, Swords, ThumbsDown,
   ThumbsUp, Users, VideoOff, Zap,
 } from 'lucide-react'
 
@@ -86,6 +86,46 @@ function SignalChips({ signals }) {
   )
 }
 
+function EvidencePlayer({ frames }) {
+  const [i, setI] = useState(0)
+  const [playing, setPlaying] = useState(true)
+
+  useEffect(() => {
+    if (!playing || !frames?.length) return undefined
+    const id = setInterval(() => setI((n) => (n + 1) % frames.length), 260)
+    return () => clearInterval(id)
+  }, [playing, frames])
+
+  if (!frames?.length) return null
+
+  return (
+    <div className="evidence-player">
+      {/* Todos los frames montados: precargados, sin parpadeo al avanzar. */}
+      {frames.map((name, n) => (
+        <img
+          key={name}
+          src={`/clips/${name}`}
+          alt={`evidencia ${n + 1}`}
+          style={{ opacity: n === i ? 1 : 0 }}
+        />
+      ))}
+      <div className="scrub">
+        <button onClick={() => setPlaying((p) => !p)} title={playing ? 'Pausar' : 'Reproducir'}>
+          {playing ? <Pause size={12} /> : <Play size={12} />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={frames.length - 1}
+          value={i}
+          onChange={(e) => { setPlaying(false); setI(Number(e.target.value)) }}
+        />
+        <span>{i + 1}/{frames.length}</span>
+      </div>
+    </div>
+  )
+}
+
 function IncidentCard({ event, onFeedback }) {
   const verdict = event.verdict
   const when = new Date(event.created_at * 1000).toLocaleTimeString('es-ES')
@@ -114,15 +154,7 @@ function IncidentCard({ event, onFeedback }) {
         </div>
       )}
 
-      {event.clip ? (
-        <div className="card-media">
-          <video src={`/clips/${event.clip}`} controls loop muted playsInline />
-        </div>
-      ) : event.thumb ? (
-        <div className="card-media">
-          <img src={`/clips/${event.thumb}`} alt="evidencia" />
-        </div>
-      ) : null}
+      <EvidencePlayer frames={event.frames} />
 
       {verdict && (
         <>

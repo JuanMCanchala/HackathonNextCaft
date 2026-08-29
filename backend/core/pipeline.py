@@ -15,7 +15,7 @@ import numpy as np
 from .. import config
 from .buffer import RingBuffer
 from .capture import Camera
-from .events import EventStore, write_clip
+from .events import EventStore, write_frames
 from .gate import Domain, Gate, load_domains
 from .signals import TrackHistory
 from .tracker import PoseTracker
@@ -161,13 +161,7 @@ class Pipeline:
             event.latency_ms = latency
             event.status = "incident" if verdict.incident else "dismissed"
 
-            clip = config.CLIPS_DIR / f"{event.id}.mp4"
-            if write_clip(frames, clip):
-                event.clip = clip.name
-            thumb = config.CLIPS_DIR / f"{event.id}.jpg"
-            mid = frames[len(frames) // 2]
-            if cv2.imwrite(str(thumb), mid):
-                event.thumb = thumb.name
+            event.frames = write_frames(frames, event.id)
         except Exception as exc:                          # noqa: BLE001
             event.status = "error"
             event.verdict = None
