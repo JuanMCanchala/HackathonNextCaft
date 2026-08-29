@@ -33,151 +33,151 @@ export type NormalizeFailure = {
   message: string;
 };
 
-const PRIVILEGED_EVIDENCE =
-  /password|secret|api[_-]?key|bearer\s|authorization\s*:/i;
+type ParseResult<T> =
+  { ok: true; value: T } | { ok: false; errors: ReadonlyArray<NormalizeFailure> };
 
-function requireNonEmpty(value: string, path: string): string | NormalizeFailure {
+const PRIVILEGED_EVIDENCE = /password|secret|api[_-]?key|bearer\s|authorization\s*:/i;
+
+function failure(path: string, message: string): ParseResult<never> {
+  return { ok: false, errors: [{ path, message }] };
+}
+
+function parseRequiredString(value: unknown, path: string): ParseResult<string> {
+  if (typeof value !== "string") {
+    return failure(path, `${path} is required`);
+  }
   const trimmed = value.trim();
   if (trimmed.length < 1) {
-    return { path, message: `${path} is required` };
+    return failure(path, `${path} is required`);
   }
-  return trimmed;
+  return { ok: true, value: trimmed };
+}
+
+function parseTimestamp(value: unknown): ParseResult<number> {
+  if (typeof value !== "string" || value.trim().length < 1) {
+    return failure("timestamp", "timestamp must be RFC3339");
+  }
+  try {
+    return { ok: true, value: fromRfc3339(value) };
+  } catch {
+    return failure("timestamp", "timestamp must be RFC3339");
+  }
+}
+
+function parseCategory(value: unknown): ParseResult<NormalizedCategory> {
+  if (typeof value !== "string") {
+    return failure("category", "category is required");
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!(CATEGORY_ALLOWLIST as readonly string[]).includes(normalized)) {
+    return failure("category", `category must be one of: ${CATEGORY_ALLOWLIST.join(", ")}`);
+  }
+  return { ok: true, value: normalized as NormalizedCategory };
+}
+
+function parseConfidence(value: unknown): ParseResult<number> {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return failure("confidence", "confidence must be a number in [0, 1]");
+  }
+  if (value < 0 || value > 1) {
+    return failure("confidence", "confidence must be a number in [0, 1]");
+  }
+  return { ok: true, value };
+}
+
+function parseEvidenceRef(ref: unknown, index: number): ParseResult<string> {
+  const path = `evidenceRefs[${index}]`;
+  if (typeof ref !== "string" || ref.trim().length < 1 || ref.length > 512) {
+    return failure(path, "evidence ref must be a non-empty string <= 512 chars");
+  }
+  if (PRIVILEGED_EVIDENCE.test(ref)) {
+    return failure(path, "evidence ref must not contain privileged credentials");
+  }
+  return { ok: true, value: ref.trim() };
+}
+
+function parseEvidenceRefs(value: unknown): ParseResult<string[]> {
+  if (value === undefined || value === null) {
+    return { ok: true, value: [] };
+  }
+  if (!Array.isArray(value)) {
+    return failure("evidenceRefs", "evidenceRefs must be an array of strings");
+  }
+  if (value.length > 16) {
+    return failure("evidenceRefs", "evidenceRefs must have at most 16 items");
+  }
+
+  const parsed = value.map((ref, index) => parseEvidenceRef(ref, index));
+  const errors = parsed.flatMap((result) => (result.ok ? [] : [...result.errors]));
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return {
+    ok: true,
+    value: parsed.flatMap((result) => (result.ok ? [result.value] : [])),
+  };
+}
+
+function collectErrors(...results: ReadonlyArray<ParseResult<unknown>>): NormalizeFailure[] {
+  return results.flatMap((result) => (result.ok ? [] : [...result.errors]));
 }
 
 export function normalizeObservation(
   input: NormalizeInput,
 ): { ok: true; value: NormalizedObservation } | { ok: false; errors: NormalizeFailure[] } {
-  const errors: NormalizeFailure[] = [];
+  const sourceEventId = parseRequiredString(input.sourceEventId, "sourceEventId");
+  const sourceNamespace = parseRequiredString(input.sourceNamespace, "sourceNamespace");
+  const occurredAtMs = parseTimestamp(input.timestamp);
+  const category = parseCategory(input.category);
+  const confidence = parseConfidence(input.confidence);
+  const modelVersion = parseRequiredString(input.modelVersion, "modelVersion");
+  const detectorVersion = parseRequiredString(input.detectorVersion, "detectorVersion");
+  const evidenceRefs = parseEvidenceRefs(input.evidenceRefs);
 
-  const sourceEventId = requireNonEmpty(
-    typeof input.sourceEventId === "string" ? input.sourceEventId : "",
-    "sourceEventId",
+  const errors = collectErrors(
+    sourceEventId,
+    sourceNamespace,
+    occurredAtMs,
+    category,
+    confidence,
+    modelVersion,
+    detectorVersion,
+    evidenceRefs,
   );
-  if (typeof sourceEventId !== "string") {
-    errors.push(sourceEventId);
-  }
-
-  const sourceNamespace = requireNonEmpty(
-    typeof input.sourceNamespace === "string" ? input.sourceNamespace : "",
-    "sourceNamespace",
-  );
-  if (typeof sourceNamespace !== "string") {
-    errors.push(sourceNamespace);
-  }
-
-  let occurredAtMs = 0;
-  if (typeof input.timestamp !== "string" || input.timestamp.trim().length < 1) {
-    errors.push({ path: "timestamp", message: "timestamp must be RFC3339" });
-  } else {
-    try {
-      occurredAtMs = fromRfc3339(input.timestamp);
-    } catch {
-      errors.push({ path: "timestamp", message: "timestamp must be RFC3339" });
-    }
-  }
-
-  let category: NormalizedCategory | null = null;
-  if (typeof input.category !== "string") {
-    errors.push({ path: "category", message: "category is required" });
-  } else {
-    const normalized = input.category.trim().toLowerCase();
-    if (!(CATEGORY_ALLOWLIST as readonly string[]).includes(normalized)) {
-      errors.push({
-        path: "category",
-        message: `category must be one of: ${CATEGORY_ALLOWLIST.join(", ")}`,
-      });
-    } else {
-      category = normalized as NormalizedCategory;
-    }
-  }
-
-  let confidence = 0;
-  if (typeof input.confidence !== "number" || !Number.isFinite(input.confidence)) {
-    errors.push({
-      path: "confidence",
-      message: "confidence must be a number in [0, 1]",
-    });
-  } else if (input.confidence < 0 || input.confidence > 1) {
-    errors.push({
-      path: "confidence",
-      message: "confidence must be a number in [0, 1]",
-    });
-  } else {
-    confidence = input.confidence;
-  }
-
-  const modelVersion = requireNonEmpty(
-    typeof input.modelVersion === "string" ? input.modelVersion : "",
-    "modelVersion",
-  );
-  if (typeof modelVersion !== "string") {
-    errors.push(modelVersion);
-  }
-
-  const detectorVersion = requireNonEmpty(
-    typeof input.detectorVersion === "string" ? input.detectorVersion : "",
-    "detectorVersion",
-  );
-  if (typeof detectorVersion !== "string") {
-    errors.push(detectorVersion);
-  }
-
-  const evidenceRefs: string[] = [];
-  if (input.evidenceRefs !== undefined && input.evidenceRefs !== null) {
-    if (!Array.isArray(input.evidenceRefs)) {
-      errors.push({
-        path: "evidenceRefs",
-        message: "evidenceRefs must be an array of strings",
-      });
-    } else if (input.evidenceRefs.length > 16) {
-      errors.push({
-        path: "evidenceRefs",
-        message: "evidenceRefs must have at most 16 items",
-      });
-    } else {
-      for (let i = 0; i < input.evidenceRefs.length; i += 1) {
-        const ref = input.evidenceRefs[i];
-        if (typeof ref !== "string" || ref.trim().length < 1 || ref.length > 512) {
-          errors.push({
-            path: `evidenceRefs[${i}]`,
-            message: "evidence ref must be a non-empty string <= 512 chars",
-          });
-          continue;
-        }
-        if (PRIVILEGED_EVIDENCE.test(ref)) {
-          errors.push({
-            path: `evidenceRefs[${i}]`,
-            message: "evidence ref must not contain privileged credentials",
-          });
-          continue;
-        }
-        evidenceRefs.push(ref.trim());
-      }
-    }
-  }
-
   if (errors.length > 0) {
     return { ok: false, errors };
   }
 
+  if (
+    !sourceEventId.ok ||
+    !sourceNamespace.ok ||
+    !occurredAtMs.ok ||
+    !category.ok ||
+    !confidence.ok ||
+    !modelVersion.ok ||
+    !detectorVersion.ok ||
+    !evidenceRefs.ok
+  ) {
+    return { ok: false, errors };
+  }
+
   const suggested =
-    typeof input.suggestedCategory === "string" &&
-    input.suggestedCategory.trim().length > 0
+    typeof input.suggestedCategory === "string" && input.suggestedCategory.trim().length > 0
       ? input.suggestedCategory.trim()
       : null;
 
   return {
     ok: true,
     value: {
-      sourceEventId: sourceEventId as string,
-      sourceNamespace: sourceNamespace as string,
-      category: category as NormalizedCategory,
+      sourceEventId: sourceEventId.value,
+      sourceNamespace: sourceNamespace.value,
+      category: category.value,
       suggestedCategory: suggested,
-      confidence,
-      occurredAtMs,
-      modelVersion: modelVersion as string,
-      detectorVersion: detectorVersion as string,
-      evidenceRefs,
+      confidence: confidence.value,
+      occurredAtMs: occurredAtMs.value,
+      modelVersion: modelVersion.value,
+      detectorVersion: detectorVersion.value,
+      evidenceRefs: evidenceRefs.value,
     },
   };
 }

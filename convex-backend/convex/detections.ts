@@ -1,13 +1,12 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
-import {
-  DEFAULT_GROUPING_WINDOW_MS,
-  findGroupingTarget,
-} from "./lib/domain/group";
+import { DEFAULT_GROUPING_WINDOW_MS, findGroupingTarget } from "./lib/domain/group";
 import {
   intakePayloadFingerprint,
   normalizeObservation,
+  type NormalizedObservation,
 } from "./lib/domain/normalize";
 import { resolveSeverity } from "./lib/domain/severity";
 import { createRequestId, throwApiError } from "./lib/errors";
@@ -21,11 +20,108 @@ export type IntakeResult = {
   requestId: string;
 };
 
-function idempotencyKey(
-  sourceNamespace: string,
-  sourceEventId: string,
-): string {
+/** Bound open-incident candidates considered for grouping in one intake txn. */
+const MAX_GROUPING_CANDIDATES = 64;
+
+function idempotencyKey(sourceNamespace: string, sourceEventId: string): string {
   return `intake:${sourceNamespace}:${sourceEventId}`;
+}
+
+function severityForCategory(category: NormalizedObservation["category"], requestId: string) {
+  try {
+    return resolveSeverity(category);
+  } catch {
+    throwApiError("VALIDATION_ERROR", "No severity rule for category", {
+      requestId,
+    });
+  }
+}
+
+function isIntakeResult(value: unknown): value is IntakeResult {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.detectionId === "string" &&
+    typeof record.incidentId === "string" &&
+    (record.disposition === "created" ||
+      record.disposition === "grouped" ||
+      record.disposition === "duplicate") &&
+    typeof record.requestId === "string"
+  );
+}
+
+async function createIncidentFromDetection(
+  ctx: MutationCtx,
+  args: {
+    workspaceId: Id<"workspaces">;
+    cameraId: Id<"cameras">;
+    observation: NormalizedObservation;
+    detectionId: Id<"detections">;
+    now: number;
+    requestId: string;
+  },
+): Promise<{ incidentId: Id<"incidents">; disposition: "created" }> {
+  const severity = severityForCategory(args.observation.category, args.requestId);
+  const incidentId = await ctx.db.insert("incidents", {
+    workspaceId: args.workspaceId,
+    cameraId: args.cameraId,
+    category: args.observation.category,
+    state: "detected",
+    severity: severity.severity,
+    severityRuleVersion: severity.ruleVersion,
+    openedAt: args.observation.occurredAtMs,
+    lastObservedAt: args.observation.occurredAtMs,
+    version: 0,
+    createdAt: args.now,
+    updatedAt: args.now,
+  });
+  await ctx.db.insert("incidentTimeline", {
+    workspaceId: args.workspaceId,
+    incidentId,
+    type: "incident.created",
+    payload: {
+      detectionId: args.detectionId,
+      category: args.observation.category,
+      severity: severity.severity,
+      ruleVersion: severity.ruleVersion,
+    },
+    createdAt: args.now,
+  });
+  return { incidentId, disposition: "created" };
+}
+
+async function groupDetectionIntoIncident(
+  ctx: MutationCtx,
+  args: {
+    workspaceId: Id<"workspaces">;
+    incidentId: Id<"incidents">;
+    observation: NormalizedObservation;
+    detectionId: Id<"detections">;
+    now: number;
+    requestId: string;
+  },
+): Promise<{ incidentId: Id<"incidents">; disposition: "grouped" }> {
+  const incident = await ctx.db.get(args.incidentId);
+  if (incident === null) {
+    throwApiError("INTERNAL_ERROR", "Grouped incident missing", {
+      requestId: args.requestId,
+    });
+  }
+  const lastObservedAt = Math.max(incident.lastObservedAt, args.observation.occurredAtMs);
+  await ctx.db.patch(args.incidentId, {
+    lastObservedAt,
+    updatedAt: args.now,
+  });
+  await ctx.db.insert("incidentTimeline", {
+    workspaceId: args.workspaceId,
+    incidentId: args.incidentId,
+    type: "detection.grouped",
+    payload: { detectionId: args.detectionId },
+    createdAt: args.now,
+  });
+  return { incidentId: args.incidentId, disposition: "grouped" };
 }
 
 export const acceptNormalized = internalMutation({
@@ -76,10 +172,7 @@ export const acceptNormalized = internalMutation({
       cameraId: args.cameraId,
       observation,
     });
-    const key = idempotencyKey(
-      observation.sourceNamespace,
-      observation.sourceEventId,
-    );
+    const key = idempotencyKey(observation.sourceNamespace, observation.sourceEventId);
 
     const prior = await ctx.db
       .query("idempotencyRecords")
@@ -96,12 +189,16 @@ export const acceptNormalized = internalMutation({
           { requestId },
         );
       }
-      const cached = prior.response as IntakeResult;
+      if (!isIntakeResult(prior.response)) {
+        throwApiError("INTERNAL_ERROR", "Corrupt intake idempotency record", {
+          requestId,
+        });
+      }
       return {
-        detectionId: cached.detectionId,
-        incidentId: cached.incidentId,
+        detectionId: prior.response.detectionId,
+        incidentId: prior.response.incidentId,
         disposition: "duplicate",
-        requestId: cached.requestId,
+        requestId: prior.response.requestId,
       };
     }
 
@@ -138,9 +235,7 @@ export const acceptNormalized = internalMutation({
       ...(observation.suggestedCategory !== null
         ? { suggestedCategory: observation.suggestedCategory }
         : {}),
-      ...(observation.evidenceRefs.length > 0
-        ? { evidenceRefs: observation.evidenceRefs }
-        : {}),
+      ...(observation.evidenceRefs.length > 0 ? { evidenceRefs: observation.evidenceRefs } : {}),
     });
 
     const openIncidents = await ctx.db
@@ -151,11 +246,10 @@ export const acceptNormalized = internalMutation({
           .eq("cameraId", args.cameraId)
           .eq("category", observation.category),
       )
-      .collect();
+      .take(MAX_GROUPING_CANDIDATES);
 
-    const windowMs = DEFAULT_GROUPING_WINDOW_MS;
     const target = findGroupingTarget(
-      openIncidents.map((incident) => ({
+      openIncidents.map((incident: Doc<"incidents">) => ({
         id: incident._id,
         workspaceId: incident.workspaceId,
         cameraId: incident.cameraId,
@@ -169,76 +263,31 @@ export const acceptNormalized = internalMutation({
         category: observation.category,
         occurredAtMs: observation.occurredAtMs,
       },
-      windowMs,
+      DEFAULT_GROUPING_WINDOW_MS,
     );
 
-    let incidentId: Id<"incidents">;
-    let disposition: IntakeDisposition;
-
-    if (target === null) {
-    let severity: ReturnType<typeof resolveSeverity>;
-    try {
-      severity = resolveSeverity(observation.category);
-    } catch {
-      throwApiError("VALIDATION_ERROR", "No severity rule for category", {
-        requestId,
-      });
-    }
-    incidentId = await ctx.db.insert("incidents", {
-      workspaceId: args.workspaceId,
-      cameraId: args.cameraId,
-      category: observation.category,
-      state: "detected",
-      severity: severity.severity,
-      severityRuleVersion: severity.ruleVersion,
-        openedAt: observation.occurredAtMs,
-        lastObservedAt: observation.occurredAtMs,
-        version: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-      disposition = "created";
-      await ctx.db.insert("incidentTimeline", {
-        workspaceId: args.workspaceId,
-        incidentId,
-        type: "incident.created",
-        payload: {
-          detectionId,
-          category: observation.category,
-          severity: severity.severity,
-          ruleVersion: severity.ruleVersion,
-        },
-        createdAt: now,
-      });
-    } else {
-      incidentId = target.id as Id<"incidents">;
-      const incident = await ctx.db.get(incidentId);
-      if (incident === null) {
-        throwApiError("INTERNAL_ERROR", "Grouped incident missing", {
-          requestId,
-        });
-      }
-      const lastObservedAt = Math.max(
-        incident.lastObservedAt,
-        observation.occurredAtMs,
-      );
-      await ctx.db.patch(incidentId, {
-        lastObservedAt,
-        updatedAt: now,
-      });
-      disposition = "grouped";
-      await ctx.db.insert("incidentTimeline", {
-        workspaceId: args.workspaceId,
-        incidentId,
-        type: "detection.grouped",
-        payload: { detectionId },
-        createdAt: now,
-      });
-    }
+    const linked =
+      target === null
+        ? await createIncidentFromDetection(ctx, {
+            workspaceId: args.workspaceId,
+            cameraId: args.cameraId,
+            observation,
+            detectionId,
+            now,
+            requestId,
+          })
+        : await groupDetectionIntoIncident(ctx, {
+            workspaceId: args.workspaceId,
+            incidentId: target.id,
+            observation,
+            detectionId,
+            now,
+            requestId,
+          });
 
     await ctx.db.insert("incidentDetections", {
       workspaceId: args.workspaceId,
-      incidentId,
+      incidentId: linked.incidentId,
       detectionId,
       createdAt: now,
     });
@@ -250,8 +299,8 @@ export const acceptNormalized = internalMutation({
       targetId: detectionId,
       requestId,
       after: {
-        incidentId,
-        disposition,
+        incidentId: linked.incidentId,
+        disposition: linked.disposition,
         category: observation.category,
         confidence: observation.confidence,
       },
@@ -260,8 +309,8 @@ export const acceptNormalized = internalMutation({
 
     const result: IntakeResult = {
       detectionId,
-      incidentId,
-      disposition,
+      incidentId: linked.incidentId,
+      disposition: linked.disposition,
       requestId,
     };
 

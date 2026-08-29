@@ -2,20 +2,12 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireActiveMembership, requireRole } from "./lib/authz";
-import { toCamera, type CameraDto } from "./lib/dto/cameras";
+import { toCamera } from "./lib/dto/cameras";
 import { createRequestId, throwApiError } from "./lib/errors";
 
-const cameraAdminStatus = v.union(
-  v.literal("active"),
-  v.literal("paused"),
-  v.literal("disabled"),
-);
+const cameraAdminStatus = v.union(v.literal("active"), v.literal("paused"), v.literal("disabled"));
 
-function validateBoundedString(
-  value: string,
-  field: string,
-  max: number,
-): void {
+function validateBoundedString(value: string, field: string, max: number): void {
   if (value.length < 1 || value.length > max) {
     throwApiError("VALIDATION_ERROR", `Invalid ${field}`, {
       details: [
@@ -84,9 +76,7 @@ export const create = mutation({
     adminStatus: v.optional(cameraAdminStatus),
   },
   handler: async (ctx, args) => {
-    const membership = await requireRole(ctx, args.workspaceId, [
-      "workspace_admin",
-    ]);
+    const membership = await requireRole(ctx, args.workspaceId, ["workspace_admin"]);
     validateBoundedString(args.externalId, "externalId", 128);
     validateBoundedString(args.label, "label", 128);
     const location = validateOptionalLocation(args.location);
@@ -152,21 +142,18 @@ export const list = query({
     validateNumItems(args.paginationOpts.numItems);
     const start = parseListOffset(args.paginationOpts.cursor);
 
+    const endExclusive = start + args.paginationOpts.numItems;
+    // Bound the index read to the requested page window (+1 for hasMore).
     const cameras = await ctx.db
       .query("cameras")
-      .withIndex("by_workspace_and_externalId", (q) =>
-        q.eq("workspaceId", args.workspaceId),
-      )
-      .collect();
+      .withIndex("by_workspace_and_externalId", (q) => q.eq("workspaceId", args.workspaceId))
+      .take(endExclusive + 1);
 
-    const items: CameraDto[] = cameras
-      .slice(start, start + args.paginationOpts.numItems)
-      .map(toCamera);
-    const end = start + args.paginationOpts.numItems;
-    const hasMore = end < cameras.length;
+    const items = cameras.slice(start, endExclusive).map(toCamera);
+    const hasMore = cameras.length > endExclusive;
     return {
       items,
-      nextCursor: hasMore ? String(end) : null,
+      nextCursor: hasMore ? String(endExclusive) : null,
       hasMore,
     };
   },

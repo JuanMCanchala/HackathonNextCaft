@@ -2,17 +2,17 @@
 
 ## Review Workload Forecast
 
-| Field | Value |
-|-------|-------|
-| Estimated changed lines | 900–1400 |
-| 400-line budget risk | High |
-| Chained PRs recommended | Yes |
-| Suggested split | PR1 foundation → PR2 cameras → PR3 intake → PR4 incidents/DTO |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | feature-branch-chain |
-| Tracker / integration base | `backend` (from `main`) |
-| Child PR bases | PR1→`backend`; PR2→`backend-01-foundation`; PR3→`backend-02-cameras`; PR4→`backend-03-intake` |
-| Tracker PR | draft `backend` → `main` (no-merge until chain complete) |
+| Field                      | Value                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| Estimated changed lines    | 900–1400                                                                                      |
+| 400-line budget risk       | High                                                                                          |
+| Chained PRs recommended    | Yes                                                                                           |
+| Suggested split            | PR1 foundation → PR2 cameras → PR3 intake → PR4 incidents/DTO                                 |
+| Delivery strategy          | ask-on-risk                                                                                   |
+| Chain strategy             | feature-branch-chain                                                                          |
+| Tracker / integration base | `backend` (from `main`)                                                                       |
+| Child PR bases             | PR1→`backend`; PR2→`backend-01-foundation`; PR3→`backend-02-cameras`; PR4→`backend-03-intake` |
+| Tracker PR                 | draft `backend` → `main` (no-merge until chain complete)                                      |
 
 Decision needed before apply: No (strategy locked)
 Chained PRs recommended: Yes
@@ -21,13 +21,13 @@ Chain strategy: feature-branch-chain (tracker=`backend`)
 
 ### Suggested Work Units
 
-| Unit | Goal | Branch | PR base | Focused test | Rollback |
-|------|------|--------|---------|--------------|----------|
-| 0 | Scaffold/docs/openspec on tracker | `backend` | `main` (tracker draft) | N/A | whole tracker |
-| 1 | Schema/authz/seed/workspaces | `backend-01-foundation` | `backend` | `pnpm test -- tests/workspaces` | schema,auth,seed,workspaces,authz |
-| 2 | Cameras CRUD | `backend-02-cameras` | `backend-01-foundation` | `pnpm test -- tests/cameras` | cameras + tests |
-| 3 | Domain + intake/group | `backend-03-intake` | `backend-02-cameras` | `pnpm test -- tests/detections tests/domain` | detections, domain |
-| 4 | Incidents/DTO/chat | `backend-04-incidents` | `backend-03-intake` | `pnpm test -- tests/incidents tests/dto` | incidents,chat,dto |
+| Unit | Goal                              | Branch                  | PR base                 | Focused test                                 | Rollback                          |
+| ---- | --------------------------------- | ----------------------- | ----------------------- | -------------------------------------------- | --------------------------------- |
+| 0    | Scaffold/docs/openspec on tracker | `backend`               | `main` (tracker draft)  | N/A                                          | whole tracker                     |
+| 1    | Schema/authz/seed/workspaces      | `backend-01-foundation` | `backend`               | `pnpm test -- tests/workspaces`              | schema,auth,seed,workspaces,authz |
+| 2    | Cameras CRUD                      | `backend-02-cameras`    | `backend-01-foundation` | `pnpm test -- tests/cameras`                 | cameras + tests                   |
+| 3    | Domain + intake/group             | `backend-03-intake`     | `backend-02-cameras`    | `pnpm test -- tests/detections tests/domain` | detections, domain                |
+| 4    | Incidents/DTO/chat                | `backend-04-incidents`  | `backend-03-intake`     | `pnpm test -- tests/incidents tests/dto`     | incidents,chat,dto                |
 
 ```text
 main
@@ -72,6 +72,13 @@ main
 - [x] 5.2 GREEN: `detections.ts` `acceptNormalized` internalMutation; one txn. (Auth+validate)
 - [x] 5.3 RED→GREEN: replay stable; mismatch IDEMPOTENCY_CONFLICT; concurrent one row. (Idempotent)
 - [x] 5.4 RED→GREEN: first create detected+severity; match groups; evidence never privileged. (Group; Evidence)
+
+## Phase 5b: Governance hygiene (post-intake)
+
+- [x] 5b.1 Refactor `normalize.ts` to Result parsers + `flatMap` (no `let` / mutable `.push`).
+- [x] 5b.2 Thin `detections.ts` adapter: extract create/group helpers; grouping `.take(64)`.
+- [x] 5b.3 Bound `cameras.list` page-window `.take`; `workspaces.list` via `flatMap` (no push/collect).
+- [x] 5b.4 Record hygiene decisions in `design.md`; verify `pnpm test` + typecheck + lint.
 
 ## Phase 6: Incidents
 
