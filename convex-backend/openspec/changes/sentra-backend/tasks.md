@@ -55,9 +55,9 @@ main
 
 ## Phase 3: Cameras
 
-- [ ] 3.1 RED: admin create; unique externalId; viewer forbidden; duplicate CONFLICT. (Register)
-- [ ] 3.2 GREEN: `cameras.ts` create/list/get; connectivity `unknown`; audit. (DTO)
-- [ ] 3.3 RED→GREEN: Camera/Page assert; cross-workspace isolation; bad pagination VALIDATION_ERROR.
+- [x] 3.1 RED: admin create; unique externalId; viewer forbidden; duplicate CONFLICT. (Register)
+- [x] 3.2 GREEN: `cameras.ts` create/list/get; connectivity `unknown`; audit. (DTO)
+- [x] 3.3 RED→GREEN: Camera/Page assert; cross-workspace isolation; bad pagination VALIDATION_ERROR.
 
 ## Phase 4: Domain helpers
 
