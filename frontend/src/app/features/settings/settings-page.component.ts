@@ -5,6 +5,7 @@ import { AUTH_SERVICE, WORKSPACE_REPOSITORY } from '../../core/config/injection-
 import { WorkspaceContextService } from '../../core/workspace/workspace-context.service';
 import type { WorkspaceDetail } from '../../core/models/workspace';
 import type { NormalizedError } from '../../core/models/errors';
+import { clerkProfileAppearance } from '../../../environments/clerk-appearance';
 import { environment } from '../../../environments/environment';
 import { LoadingStateComponent } from '../../shared/ui/loading-state.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
@@ -65,7 +66,7 @@ type SettingsTab = 'account' | 'workspace';
       </div>
 
       @if (tab() === 'account') {
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
+        <div class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
           <hlm-card class="gap-4 p-6">
             <hlm-card-header>
               <hlm-card-title class="text-base">Sesión actual</hlm-card-title>
@@ -111,9 +112,13 @@ type SettingsTab = 'account' | 'workspace';
             </hlm-card-content>
           </hlm-card>
 
-          <hlm-card class="overflow-hidden p-0">
-            <clerk-user-profile [props]="{ routing: 'hash' }" />
-          </hlm-card>
+          <div
+            class="sentra-clerk-profile min-w-0 overflow-hidden rounded-[var(--sentra-radius-lg)] border border-border bg-card"
+          >
+            <clerk-user-profile
+              [props]="{ routing: 'hash', appearance: clerkProfileAppearance }"
+            />
+          </div>
         </div>
       } @else {
         @if (loading()) {
@@ -209,6 +214,7 @@ export class SettingsPageComponent implements OnInit {
   readonly copied = signal(false);
 
   readonly convexUrl = environment.convexUrl;
+  readonly clerkProfileAppearance = clerkProfileAppearance;
 
   ngOnInit(): void {
     void this.loadWorkspace();

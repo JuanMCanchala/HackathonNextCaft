@@ -15,3 +15,15 @@ export const clerkAppearance: NonNullable<ClerkOptions['appearance']> = {
     borderRadius: '6px',
   },
 };
+
+/** Perfil embebido en Ajustes — ancho contenido y bordes redondeados. */
+export const clerkProfileAppearance: NonNullable<ClerkOptions['appearance']> = {
+  ...clerkAppearance,
+  elements: {
+    rootBox: 'w-full max-w-full',
+    cardBox: 'w-full max-w-full rounded-[10px] shadow-none',
+    card: 'w-full max-w-full rounded-[10px]',
+    scrollBox: 'rounded-[10px]',
+    navbar: 'rounded-t-[10px]',
+  },
+};

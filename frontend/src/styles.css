@@ -225,4 +225,13 @@ body {
   .cl-formButtonPrimary {
     color: #ffffff !important;
   }
+
+  .sentra-clerk-profile .cl-rootBox,
+  .sentra-clerk-profile .cl-cardBox,
+  .sentra-clerk-profile .cl-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--sentra-radius-lg) !important;
+    overflow: hidden;
+  }
 }

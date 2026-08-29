@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { ClerkUserButtonComponent } from 'ngx-clerk';
+import { ClerkService, ClerkUserButtonComponent } from 'ngx-clerk';
 import { WorkspaceContextService } from '../core/workspace/workspace-context.service';
 import { WorkspaceSwitcherComponent } from './workspace-switcher.component';
 
@@ -22,19 +22,34 @@ import { WorkspaceSwitcherComponent } from './workspace-switcher.component';
         @if (workspace.hasMultiple()) {
           <app-workspace-switcher />
         }
-        <clerk-user-button
-          [props]="{
-            userProfileMode: 'navigation',
-            userProfileUrl: '/app/settings',
-          }"
-        />
+        <div class="flex items-center gap-2">
+          @if (userEmail(); as email) {
+            <span
+              class="hidden max-w-[11rem] truncate text-xs text-muted-foreground md:inline"
+              [title]="email"
+            >
+              {{ email }}
+            </span>
+          }
+          <clerk-user-button
+            [props]="{
+              userProfileMode: 'navigation',
+              userProfileUrl: '/app/settings',
+            }"
+          />
+        </div>
       </div>
     </header>
   `,
 })
 export class TopbarComponent {
+  private readonly clerk = inject(ClerkService);
   readonly workspace = inject(WorkspaceContextService);
   readonly title = input('Centro de operaciones');
 
   readonly workspaceName = computed(() => this.workspace.activeWorkspace()?.name ?? null);
+
+  readonly userEmail = computed(
+    () => this.clerk.user()?.primaryEmailAddress?.emailAddress ?? null,
+  );
 }
