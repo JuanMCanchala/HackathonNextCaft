@@ -350,35 +350,83 @@ import {
               </button>
             </div>
 
-            @if (ev.frames.length > 0) {
+            @if (ev.frames.length > 0 || ev.clip) {
               <div class="bg-black">
                 <div
-                  class="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-[11px] uppercase tracking-widest"
+                  class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2 font-mono text-[11px] uppercase tracking-widest"
                 >
                   <span class="text-muted-foreground">{{ ev.camera }} · {{ ev.source }}</span>
-                  <span class="text-foreground/80">
-                    fotograma {{ indice() + 1 }} / {{ ev.frames.length }}
-                  </span>
-                </div>
-                <img
-                  [src]="vision.frameUrl(ev.frames[indice()] ?? '')"
-                  alt="Fotograma de la deteccion"
-                  class="block max-h-[52vh] w-full object-contain"
-                />
-                @if (ev.frames.length > 1) {
-                  <div class="flex flex-wrap gap-1.5 border-t border-border p-3">
-                    @for (f of ev.frames; track f; let i = $index) {
+                  <!-- El clip da el movimiento, los fotogramas dejan pararse en
+                       el instante exacto. Son dos formas de mirar lo mismo y
+                       hacen falta las dos. -->
+                  <div class="flex items-center gap-1">
+                    @if (ev.clip) {
                       <button
                         type="button"
-                        class="h-12 w-16 overflow-hidden rounded border transition-colors"
-                        [class.border-primary]="i === indice()"
-                        [class.border-border]="i !== indice()"
-                        (click)="indice.set(i)"
+                        class="rounded px-2.5 py-1 uppercase tracking-widest transition-colors"
+                        [class.bg-primary]="vista() === 'clip'"
+                        [class.text-primary-foreground]="vista() === 'clip'"
+                        [class.text-muted-foreground]="vista() !== 'clip'"
+                        (click)="vista.set('clip')"
                       >
-                        <img [src]="vision.frameUrl(f)" alt="" class="h-full w-full object-cover" />
+                        Clip
                       </button>
                     }
+                    @if (ev.frames.length > 0) {
+                      <button
+                        type="button"
+                        class="rounded px-2.5 py-1 uppercase tracking-widest transition-colors"
+                        [class.bg-primary]="vista() === 'frames'"
+                        [class.text-primary-foreground]="vista() === 'frames'"
+                        [class.text-muted-foreground]="vista() !== 'frames'"
+                        (click)="vista.set('frames')"
+                      >
+                        Fotogramas
+                      </button>
+                    }
+                    @if (vista() === 'frames' && ev.frames.length > 0) {
+                      <span class="pl-2 text-foreground/80">
+                        {{ indice() + 1 }} / {{ ev.frames.length }}
+                      </span>
+                    }
                   </div>
+                </div>
+
+                @if (vista() === 'clip' && ev.clip) {
+                  <video
+                    [src]="vision.frameUrl(ev.clip)"
+                    controls
+                    autoplay
+                    muted
+                    loop
+                    playsinline
+                    class="block max-h-[52vh] w-full bg-black"
+                  ></video>
+                } @else if (ev.frames.length > 0) {
+                  <img
+                    [src]="vision.frameUrl(ev.frames[indice()] ?? '')"
+                    alt="Fotograma de la deteccion"
+                    class="block max-h-[52vh] w-full object-contain"
+                  />
+                  @if (ev.frames.length > 1) {
+                    <div class="flex flex-wrap gap-1.5 border-t border-border p-3">
+                      @for (f of ev.frames; track f; let i = $index) {
+                        <button
+                          type="button"
+                          class="h-12 w-16 overflow-hidden rounded border transition-colors"
+                          [class.border-primary]="i === indice()"
+                          [class.border-border]="i !== indice()"
+                          (click)="indice.set(i)"
+                        >
+                          <img
+                            [src]="vision.frameUrl(f)"
+                            alt=""
+                            class="h-full w-full object-cover"
+                          />
+                        </button>
+                      }
+                    </div>
+                  }
                 }
               </div>
             }
@@ -454,6 +502,7 @@ export class LivePageComponent implements OnInit, OnDestroy {
   readonly errorSubida = signal('');
   readonly detalle = signal<VisionEvent | null>(null);
   readonly indice = signal(0);
+  readonly vista = signal<'clip' | 'frames'>('clip');
   readonly stream = signal('');
 
   private temporizador?: ReturnType<typeof setInterval>;
@@ -475,6 +524,8 @@ export class LivePageComponent implements OnInit, OnDestroy {
     this.detalle.set(evento);
     // Se abre por el fotograma central, que es donde suele estar la accion.
     this.indice.set(this.medio(evento));
+    // Y por el clip si existe: el movimiento se entiende antes que una foto.
+    this.vista.set(evento.clip ? 'clip' : 'frames');
   }
 
   cerrar(): void {

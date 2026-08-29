@@ -251,12 +251,35 @@ export class WorkspaceSelectPageComponent {
 
 
   private async bootstrap(): Promise<void> {
-
     if (this.workspace.workspaces().length === 0) {
-
       await this.workspace.refresh();
-
     }
+
+    // Se intenta la entrada a la demostracion SIEMPRE, no solo cuando la lista
+    // viene vacia.
+    //
+    // Probarlo solo sin workspaces dejaba fuera el caso mas comun: alguien que
+    // ya se habia creado uno propio -y vacio- entraba ahi y veia un panel a
+    // cero con los datos reales al otro lado. La operacion es idempotente, asi
+    // que intentarlo de mas no cuesta nada.
+    const demo = await this.workspace.tryJoinDemo();
+    const cuantos = this.workspace.workspaces().length;
+    if (demo !== null && cuantos <= 1) {
+      this.workspace.setWorkspace(demo);
+      void this.router.navigate(['/']);
+      return;
+    }
+    if (demo !== null) {
+      // Con varios workspaces se deja elegir, pero preseleccionando el de la
+      // demostracion: es el que tiene incidentes.
+      this.selectedId.set(demo);
+      return;
+    }
+    const unico = this.workspace.workspaces();
+    if (unico.length === 1 && unico[0] !== undefined) {
+      this.selectedId.set(unico[0].id);
+    }
+  }
 
   }
 
