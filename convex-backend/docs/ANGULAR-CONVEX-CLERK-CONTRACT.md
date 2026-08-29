@@ -187,17 +187,17 @@ Protected operations MUST only be enabled after `isAuthenticated$` is true. The 
 
 ## 7. Supported first-slice operations
 
-| Operation         | Frontend access | Required role             |
-| ----------------- | --------------- | ------------------------- |
-| Create workspace  | Convex mutation | Authenticated user (becomes workspace_admin) |
-| List workspaces   | Convex query    | Authenticated member      |
-| Get workspace     | Convex query    | Authenticated member      |
-| List cameras      | Convex query    | Viewer, operator, admin   |
-| Get camera        | Convex query    | Viewer, operator, admin   |
-| Create camera     | Convex mutation | Workspace admin           |
-| List incidents    | Convex query    | Viewer, operator, admin   |
-| Get incident      | Convex query    | Viewer, operator, admin   |
-| Triage incident   | Convex mutation | Operator, workspace admin |
+| Operation        | Frontend access | Required role                                |
+| ---------------- | --------------- | -------------------------------------------- |
+| Create workspace | Convex mutation | Authenticated user (becomes workspace_admin) |
+| List workspaces  | Convex query    | Authenticated member                         |
+| Get workspace    | Convex query    | Authenticated member                         |
+| List cameras     | Convex query    | Viewer, operator, admin                      |
+| Get camera       | Convex query    | Viewer, operator, admin                      |
+| Create camera    | Convex mutation | Workspace admin                              |
+| List incidents   | Convex query    | Viewer, operator, admin                      |
+| Get incident     | Convex query    | Viewer, operator, admin                      |
+| Triage incident  | Convex mutation | Operator, workspace admin                    |
 
 The internal detection intake MUST NOT be called from Angular or any browser client.
 
