@@ -22,7 +22,7 @@ from . import timeline as timeline_mod
 from .analyzer import Analyzer
 from .buffer import RingBuffer
 from .capture import Camera
-from .events import EventStore, write_frames
+from .events import EventStore, write_clip, write_frames
 from .gate import Domain, Gate, load_domains
 from .intake import ConvexIntake
 from .notify import Notifier
@@ -372,6 +372,13 @@ class Pipeline:
             event.latency_ms = latency
             event.status = "incident" if verdict.incident else "dismissed"
             event.frames = write_frames(frames, event.id)
+            # El clip del panel abarca TODO el buffer, no la ventana corta que
+            # se le manda al VLM: en el correo interesa el instante critico y
+            # al abrir el incidente interesa el contexto de antes y despues.
+            event.clip = write_clip(
+                [feed.buffer.decode(payload) for _, payload in feed.buffer.window(
+                    t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)],
+                event.id, fps=config.CLIP_FPS)
             event.timeline = timeline_mod.build(
                 samples, domain, t,
                 t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS)

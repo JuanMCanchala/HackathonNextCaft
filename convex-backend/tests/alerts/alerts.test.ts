@@ -339,7 +339,7 @@ describe("el correo lleva la escena", () => {
     expect(html).toContain("<img");
     expect(html).toContain("adventurous-wolf-401.convex.cloud/api/storage/abc.jpg");
     expect(html).toContain("Anden 3");
-    expect(html).toContain("agresion");
+    expect(html).toContain("Agresion");
   });
 
   it("descarta las referencias que apuntan al equipo del analisis", async () => {
@@ -353,7 +353,7 @@ describe("el correo lleva la escena", () => {
     const html = htmlEnviado();
     expect(html).not.toContain("<img");
     expect(html).not.toContain("192.168.1.40");
-    expect(html).toContain("Sin clip disponible");
+    expect(html).toContain("Sin imagen para este incidente");
   });
 
   it("sin evidencia el correo sigue diciendo que ha pasado y donde", async () => {
@@ -363,9 +363,9 @@ describe("el correo lleva la escena", () => {
     await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
 
     const html = htmlEnviado();
-    expect(html).toContain("agresion");
+    expect(html).toContain("Agresion");
     expect(html).toContain("Anden 3");
-    expect(html).toContain("CRITICAL".toLowerCase());
+    expect(html).toContain("Critico");
   });
 
   it("manda tambien version en texto plano", async () => {
@@ -451,7 +451,7 @@ describe("el correo lleva al panel", () => {
 
     const html = htmlEnviado();
     expect(html).toContain(`https://ejemplo.convex.site/incidente?id=${incidentId}`);
-    expect(html).toContain("Abrir el incidente en el panel");
+    expect(html).toContain("Ver el clip completo");
   });
 
   it("sin panel configurado el correo sigue siendo util", async () => {
@@ -462,8 +462,8 @@ describe("el correo lleva al panel", () => {
     await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
 
     const html = htmlEnviado();
-    expect(html).not.toContain("Abrir el incidente");
-    expect(html).toContain("agresion");
+    expect(html).not.toContain("Ver el clip completo");
+    expect(html).toContain("Agresion");
     expect(html).toContain("Anden 3");
   });
 });

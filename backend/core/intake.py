@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 
 from .. import config
 
+MAX_SUBIDA = 20 * 1024 * 1024   # tope de /evidence en Convex
 GIF_ANCHO = 400
 GIF_COLORES = 64
 GIF_FRAMES = 10
@@ -217,6 +218,35 @@ class ConvexIntake:
                 return locales
             tipo = "image/jpeg"
 
+        refs: list[str] = []
+        subida = self._subir(datos, tipo)
+        if subida:
+            refs.append(subida)
+
+        # El clip largo va aparte del GIF: en el correo interesa el instante
+        # critico y al abrir el incidente interesa el contexto entero.
+        clip = getattr(event, "clip", None)
+        if clip:
+            ruta_clip = config.CLIPS_DIR / clip
+            if ruta_clip.exists() and ruta_clip.stat().st_size <= MAX_SUBIDA:
+                try:
+                    subida_clip = self._subir(ruta_clip.read_bytes(), "video/mp4")
+                except OSError:
+                    subida_clip = None
+                if subida_clip:
+                    refs.append(subida_clip)
+
+        return [*refs, *locales]
+
+    def _subir(self, datos: bytes, tipo: str) -> str | None:
+        """Sube un fichero y devuelve `url#tipo`.
+
+        El tipo viaja en el fragmento de la URL porque el almacenamiento de
+        Convex sirve todo bajo `/api/storage/<uuid>`, sin extension: sin esta
+        marca no hay forma de saber si una referencia es una imagen para el
+        correo o un video para el panel. El fragmento no llega al servidor y
+        los navegadores lo ignoran, asi que la URL sigue funcionando tal cual.
+        """
         try:
             req = urllib.request.Request(
                 self.evidencia_url, data=datos, method="POST",
@@ -224,10 +254,10 @@ class ConvexIntake:
                          "Authorization": f"Bearer {self.token}"})
             with urllib.request.urlopen(req, timeout=TIMEOUT) as res:
                 url = json.loads(res.read()).get("url")
-            return [url, *locales] if url else locales
+            return f"{url}#{tipo}" if url else None
         except (OSError, ValueError) as exc:
             self.last_error = f"evidencia: {exc}"
-            return locales
+            return None
 
     def _payload(self, event, categoria: str) -> dict:
         refs = self._subir_evidencia(event)

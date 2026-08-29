@@ -45,6 +45,9 @@ class Event(BaseModel):
     status: Literal["analyzing", "incident", "dismissed", "error"] = "analyzing"
     verdict: Verdict | None = None
     frames: list[str] = []
+    # Clip mp4 con TODO el buffer, no solo la ventana del VLM: es lo que se
+    # ve al abrir el incidente en el panel.
+    clip: str | None = None
     timeline: list[dict] = []
     camera: str = "cam1"
     source: str = "live"      # 'live' o el nombre del archivo subido

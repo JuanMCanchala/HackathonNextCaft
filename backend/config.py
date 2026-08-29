@@ -53,6 +53,7 @@ EVENTS_LOG = DATA_DIR / "events.jsonl"
 BUFFER_SECONDS = 12.0
 CLIP_PRE_SECONDS = 4.0
 CLIP_POST_SECONDS = 1.5
+CLIP_FPS = 8.0           # ritmo del mp4 del panel; el buffer no guarda mas
 VLM_FRAMES = 10          # frames muestreados del clip hacia el VLM
 VLM_MAX_WIDTH = 640      # se reescala antes de enviar para bajar tokens
 VLM_WORKERS = 2

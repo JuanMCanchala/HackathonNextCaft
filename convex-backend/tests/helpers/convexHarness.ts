@@ -29,6 +29,7 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/lib/domain/normalize.ts": () => import("../../convex/lib/domain/normalize"),
   "../../convex/lib/domain/group.ts": () => import("../../convex/lib/domain/group"),
   "../../convex/lib/domain/severity.ts": () => import("../../convex/lib/domain/severity"),
+  "../../convex/lib/domain/evidence.ts": () => import("../../convex/lib/domain/evidence"),
   "../../convex/lib/domain/alertPolicy.ts": () => import("../../convex/lib/domain/alertPolicy"),
   "../../convex/lib/domain/transition.ts": () => import("../../convex/lib/domain/transition"),
   "../../convex/_generated/api.js": () => import("../../convex/_generated/api.js"),

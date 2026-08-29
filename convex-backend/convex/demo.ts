@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
+import { parseEvidence } from "./lib/domain/evidence";
 
 /**
  * Vista publica de solo lectura para la demo.
@@ -76,7 +77,10 @@ export const publicIncident = internalQuery({
       lastObservedAt: incidente.lastObservedAt,
       confidence: deteccion?.confidence ?? null,
       suggestedCategory: deteccion?.suggestedCategory ?? null,
-      clipUrl: (deteccion?.evidenceRefs ?? []).find((ref) => ref.startsWith("https://")) ?? null,
+      // La ficha ensena el clip completo si existe; la imagen queda de
+      // respaldo para incidentes guardados antes de que hubiera video.
+      clipUrl: parseEvidence(deteccion?.evidenceRefs ?? []).video,
+      stillUrl: parseEvidence(deteccion?.evidenceRefs ?? []).imagen,
       // Cuantas observaciones se agruparon: es lo que distingue un destello de
       // un incidente sostenido.
       observations: linea.filter((e) => e.type === "detection.grouped").length + 1,
