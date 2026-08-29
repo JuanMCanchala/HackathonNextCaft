@@ -66,11 +66,20 @@ function parseSeverity(
 export function parseAlertConfig(env: Record<string, string | undefined>): AlertConfig {
   const emailListo =
     Boolean(env.RESEND_API_KEY) && Boolean(env.ALERT_EMAIL_FROM) && Boolean(env.ALERT_EMAIL_TO);
-  const llamadaLista =
+  // Dos proveedores de voz. Vapi manda si esta completo: mantiene la
+  // conversacion, asi que quien contesta puede repreguntar. Twilio lee un
+  // texto y cuelga, y se queda como alternativa.
+  const vapiListo =
+    Boolean(env.VAPI_API_KEY) &&
+    Boolean(env.VAPI_ASSISTANT_ID) &&
+    Boolean(env.VAPI_PHONE_NUMBER_ID) &&
+    Boolean(env.ALERT_PHONE_TO);
+  const twilioListo =
     Boolean(env.TWILIO_ACCOUNT_SID) &&
     Boolean(env.TWILIO_AUTH_TOKEN) &&
     Boolean(env.TWILIO_FROM) &&
     Boolean(env.ALERT_PHONE_TO);
+  const llamadaLista = vapiListo || twilioListo;
 
   return {
     call: {

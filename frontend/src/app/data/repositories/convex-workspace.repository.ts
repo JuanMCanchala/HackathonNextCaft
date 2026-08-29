@@ -42,4 +42,9 @@ export class ConvexWorkspaceRepository implements WorkspaceRepository {
     });
     return parseOrThrow(workspaceDetailSchema, raw);
   }
+
+  async joinDemo(): Promise<string | null> {
+    const raw = await this.convex.mutation<unknown>('workspaces:joinDemo', {});
+    return typeof raw === 'string' ? raw : null;
+  }
 }

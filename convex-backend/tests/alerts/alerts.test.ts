@@ -38,7 +38,13 @@ const ENTORNO_COMPLETO: Record<string, string> = {
   ALERT_PHONE_TO: "+34600000000",
 };
 
-const CLAVES_OPCIONALES = ["ALERT_CALL_MIN_SEVERITY", "ALERT_EMAIL_MIN_SEVERITY"];
+const CLAVES_OPCIONALES = [
+  "ALERT_CALL_MIN_SEVERITY",
+  "ALERT_EMAIL_MIN_SEVERITY",
+  "VAPI_API_KEY",
+  "VAPI_ASSISTANT_ID",
+  "VAPI_PHONE_NUMBER_ID",
+];
 
 beforeEach(() => {
   llamadas = [];
@@ -688,5 +694,103 @@ describe("analisis de la escena y consulta", () => {
     expect(cuerpo.error).toContain("429");
     // El cuerpo del proveedor no se reenvia tal cual.
     expect(JSON.stringify(cuerpo)).not.toContain("clave-de-prueba");
+  });
+});
+
+describe("llamada de voz por Vapi", () => {
+  const VAPI = {
+    VAPI_API_KEY: "vapi-clave-de-prueba",
+    VAPI_ASSISTANT_ID: "asistente-1",
+    VAPI_PHONE_NUMBER_ID: "numero-1",
+  };
+
+  async function incidenteCon(t: SentraTest, extra: Record<string, unknown> = {}) {
+    const { workspaceId, cameraId } = await sembrar(t);
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId, extra),
+    );
+    return resultado.incidentId;
+  }
+
+  it("con Vapi configurado se usa Vapi y no Twilio", async () => {
+    // Vapi conversa; Twilio solo dicta y cuelga. Quien contesta de madrugada
+    // suele querer preguntar.
+    const t = createTestBackend();
+    Object.assign(process.env, VAPI);
+    const incidentId = await incidenteCon(t);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas.some((c) => c.url.includes("api.vapi.ai/call"))).toBe(true);
+    expect(llamadas.some((c) => c.url.includes("api.twilio.com"))).toBe(false);
+  });
+
+  it("sin Vapi se cae a Twilio en vez de quedarse sin llamar", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas.some((c) => c.url.includes("api.twilio.com"))).toBe(true);
+  });
+
+  it("la llamada lleva el incidente y su descripcion", async () => {
+    const t = createTestBackend();
+    Object.assign(process.env, VAPI);
+    const incidentId = await incidenteCon(t, {
+      summary: "Dos personas forcejean junto a la puerta.",
+    });
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const vapi = llamadas.find((c) => c.url.includes("api.vapi.ai/call"));
+    const cuerpo = JSON.parse(String(vapi?.init.body ?? "{}")) as {
+      customer: { number: string };
+      assistantId: string;
+      assistantOverrides: {
+        firstMessage: string;
+        variableValues: Record<string, string>;
+        model: { messages: Array<{ content: string }> };
+      };
+    };
+    expect(cuerpo.assistantId).toBe("asistente-1");
+    expect(cuerpo.customer.number).toBe("+34600000000");
+    // El tipo y la camara se dicen dos veces: por telefono un dato que solo
+    // suena una vez se pierde.
+    expect(cuerpo.assistantOverrides.firstMessage).toContain("agresion");
+    expect(cuerpo.assistantOverrides.firstMessage).toContain("Repito");
+    expect(cuerpo.assistantOverrides.variableValues.camara).toBe("Anden 3");
+    expect(cuerpo.assistantOverrides.model.messages[0]?.content).toContain(
+      "Dos personas forcejean",
+    );
+  });
+
+  it("si Vapi falla queda el motivo y sin credenciales", async () => {
+    const t = createTestBackend();
+    Object.assign(process.env, VAPI);
+    const incidentId = await incidenteCon(t);
+    respuesta = () => new Response("bad key vapi-clave-de-prueba", { status: 401 });
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const eventos = await tiempoDe(t, incidentId);
+    const fallido = eventos.find((e) => e.type === "alert.failed" && e.payload?.channel === "call");
+    expect(String(fallido?.payload?.detail)).toContain("401");
+    expect(JSON.stringify(eventos)).not.toContain("vapi-clave-de-prueba");
+  });
+
+  it("Vapi a medio configurar no cuenta como canal de voz", async () => {
+    // Faltando el numero, la llamada fallaria al vuelo con el incidente ya
+    // abierto. Mejor no contarlo como canal disponible.
+    const t = createTestBackend();
+    process.env.VAPI_API_KEY = "vapi-clave-de-prueba";
+    process.env.VAPI_ASSISTANT_ID = "asistente-1";
+    const incidentId = await incidenteCon(t);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas.some((c) => c.url.includes("api.vapi.ai"))).toBe(false);
+    expect(llamadas.some((c) => c.url.includes("api.twilio.com"))).toBe(true);
   });
 });

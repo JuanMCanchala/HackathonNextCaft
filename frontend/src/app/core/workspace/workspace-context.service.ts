@@ -56,6 +56,31 @@ export class WorkspaceContextService {
     this._workspaces.set(page.items);
   }
 
+  /**
+   * Se apunta al workspace de demostracion si el backend lo permite.
+   *
+   * Los incidentes de la demo los sembro el pipeline con un identificador de
+   * servicio, no con una cuenta de Clerk: sin esto, quien inicia sesion por
+   * primera vez no es miembro de nada y ve una pantalla vacia con datos reales
+   * al otro lado. Si el backend no ofrece la entrada, o esta apagada, devuelve
+   * null y la pantalla sigue pidiendo crear uno.
+   */
+  async tryJoinDemo(): Promise<string | null> {
+    if (this.repo.joinDemo === undefined) {
+      return null;
+    }
+    try {
+      const workspaceId = await this.repo.joinDemo();
+      if (workspaceId !== null) {
+        await this.refresh();
+      }
+      return workspaceId;
+    } catch {
+      // Que falle no puede impedir crear un workspace a mano.
+      return null;
+    }
+  }
+
   async create(request: CreateWorkspaceRequest): Promise<WorkspaceDetail> {
     this._creating.set(true);
     try {

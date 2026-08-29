@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { decideAlert, parseAlertConfig, type AlertChannel } from "./lib/domain/alertPolicy";
 import { parseEvidence } from "./lib/domain/evidence";
+import { llamarPorVapi, vapiConfigurado } from "./lib/voice/vapi";
 import { asuntoAviso, cuerpoAviso, textoAviso } from "./lib/email/alertEmail";
 import type { OperationalSeverity } from "./lib/domain/severity";
 
@@ -33,21 +34,24 @@ const MIN_SECRETO = 8;
 
 /**
  * El cuerpo de error de un proveedor sirve para depurar (Twilio dice si el
- * numero no esta verificado, que es el fallo tipico en cuenta de prueba), pero
- * NO se guarda tal cual: esos mensajes suelen repetir la credencial que has
- * mandado, y la linea de tiempo la lee cualquier miembro del workspace.
+ * numero no esta verificado, Vapi si falta el asistente), pero NO se guarda
+ * tal cual: esos mensajes suelen repetir la credencial que has mandado, y la
+ * linea de tiempo la lee cualquier miembro del workspace.
  *
- * Se tacha por valor, no por nombre de variable, porque el proveedor la
- * devuelve incrustada en su propia prosa y no como un campo identificable.
+ * Los secretos se descubren por el NOMBRE de la variable, no con una lista
+ * escrita a mano. La lista manual ya fallo una vez: al anadir Vapi como
+ * proveedor de voz, su clave se colo en la traza porque nadie se acordo de
+ * apuntarla. Con esto, un proveedor nuevo queda cubierto el dia que se anade
+ * su variable, sin depender de que alguien lo recuerde.
  */
+const NOMBRE_DE_SECRETO = /(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/;
+
 function recortar(texto: string, env: NodeJS.ProcessEnv): string {
   let limpio = texto.replace(/\s+/g, " ").trim();
-  const secretos = [
-    env.RESEND_API_KEY,
-    env.TWILIO_AUTH_TOKEN,
-    env.TWILIO_ACCOUNT_SID,
-    env.INTAKE_SERVICE_TOKEN,
-  ].filter((valor): valor is string => typeof valor === "string" && valor.length >= MIN_SECRETO);
+  const secretos = Object.entries(env)
+    .filter(([nombre]) => NOMBRE_DE_SECRETO.test(nombre))
+    .map(([, valor]) => valor)
+    .filter((valor): valor is string => typeof valor === "string" && valor.length >= MIN_SECRETO);
   for (const secreto of secretos) {
     limpio = limpio.split(secreto).join("[redactado]");
   }
@@ -167,6 +171,7 @@ export const incidentSummary = internalQuery({
       cameraLabel: v.string(),
       openedAt: v.number(),
       confidence: v.union(v.number(), v.null()),
+      summary: v.union(v.string(), v.null()),
       evidenceUrl: v.union(v.string(), v.null()),
     }),
   ),
@@ -199,6 +204,7 @@ export const incidentSummary = internalQuery({
       cameraLabel: camara?.label ?? "camara",
       openedAt: incidente.openedAt,
       confidence: deteccion?.confidence ?? null,
+      summary: deteccion?.summary ?? null,
       evidenceUrl: imagen,
     };
   },
@@ -284,11 +290,27 @@ export const dispatch = internalAction({
     // En paralelo y con los fallos capturados: que no salga el correo no puede
     // impedir que suene el telefono.
     const intentos = await Promise.all(
-      decision.channels.map((canal) =>
-        canal === "call"
-          ? llamar(process.env, dictado)
-          : enviarCorreo(process.env, texto, asunto, html),
-      ),
+      decision.channels.map((canal) => {
+        if (canal !== "call") {
+          return enviarCorreo(process.env, texto, asunto, html);
+        }
+        // Vapi conversa; Twilio solo dicta. Se prefiere el primero cuando
+        // esta completo, porque quien contesta suele querer preguntar.
+        return vapiConfigurado(process.env)
+          ? llamarPorVapi(
+              process.env,
+              {
+                tipo: ETIQUETA[resumen.category] ?? resumen.category,
+                camara: resumen.cameraLabel,
+                severidad: resumen.severity,
+                hora: new Date(resumen.openedAt).toLocaleTimeString("es-ES", { hour12: false }),
+                confianza: resumen.confidence,
+                resumen: resumen.summary,
+              },
+              (t) => recortar(t, process.env),
+            ).then((r) => ({ channel: "call" as const, ok: r.ok, detail: r.detalle }))
+          : llamar(process.env, dictado);
+      }),
     );
 
     for (const intento of intentos) {

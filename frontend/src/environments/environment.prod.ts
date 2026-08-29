@@ -6,7 +6,7 @@ export const environment = {
   backendProfile: 'convex-mvp' as BackendProfile,
   dataSource: 'convex' as DataSource,
   apiBase: 'http://localhost:3000',
-  convexUrl: 'http://127.0.0.1:3210',
+  convexUrl: 'https://adventurous-wolf-401.convex.cloud',
   clerk: clerkConfig,
   useMockAuth: false,
   useMockRealtime: false,
