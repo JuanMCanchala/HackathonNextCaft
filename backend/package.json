@@ -12,7 +12,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:check": "eslint .",
-    "test": "jest --runInBand",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,15 +23,20 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "@edge-runtime/vm": "^5.0.0",
     "@types/jest": "latest",
     "@types/node": "latest",
+    "babel-jest": "^30.5.0",
+    "convex-test": "^0.0.56",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "jest": "latest",
     "prettier": "latest",
     "ts-jest": "latest",
     "tsx": "latest",
-    "typescript-eslint": "latest",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "typescript-eslint": "latest"
   }
 }
