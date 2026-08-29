@@ -94,6 +94,9 @@ class ConvexIntake:
 
     def __init__(self):
         self.url = config.CONVEX_INTAKE_URL
+        # Mismo servidor y mismo token que el intake; solo cambia la ruta.
+        self.evidencia_url = (
+            self.url.rsplit("/", 1)[0] + "/evidence" if self.url else "")
         self.token = config.CONVEX_INTAKE_TOKEN
         self.workspace = config.CONVEX_WORKSPACE_ID
         self.camaras = dict(config.CONVEX_CAMERA_IDS)
@@ -126,9 +129,44 @@ class ConvexIntake:
         threading.Thread(target=self._post, args=(event, categoria),
                          name="convex-intake", daemon=True).start()
 
-    def _payload(self, event, categoria: str) -> dict:
+    def _subir_evidencia(self, event) -> list[str]:
+        """Sube el mejor fotograma a Convex y devuelve su URL publica.
+
+        Antes se mandaba `PUBLIC_BASE_URL/clips/...`, que apunta al equipo que
+        corre el analisis. Sirve para el panel local, pero un correo de aviso
+        abierto en un movil no alcanza esa direccion y la imagen no se veia.
+
+        Si la subida falla se cae a las rutas locales en vez de perder la
+        referencia: el panel las sigue resolviendo y el incidente se guarda
+        igual. Una foto que no llega no puede costar el registro del incidente.
+        """
         base = (config.PUBLIC_BASE_URL or "").rstrip("/")
-        refs = [f"{base}/clips/{n}" for n in (event.frames or [])[:4]] if base else []
+        locales = [f"{base}/clips/{n}" for n in (event.frames or [])[:4]] if base else []
+        nombres = event.frames or []
+        if not self.evidencia_url or not nombres:
+            return locales
+
+        # El fotograma del medio es el que suele contener la accion: los
+        # primeros son el antes y los ultimos el despues.
+        ruta = config.CLIPS_DIR / nombres[len(nombres) // 2]
+        if not ruta.exists():
+            return locales
+
+        try:
+            datos = ruta.read_bytes()
+            req = urllib.request.Request(
+                self.evidencia_url, data=datos, method="POST",
+                headers={"Content-Type": "image/jpeg",
+                         "Authorization": f"Bearer {self.token}"})
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as res:
+                url = json.loads(res.read()).get("url")
+            return [url, *locales] if url else locales
+        except (OSError, ValueError) as exc:
+            self.last_error = f"evidencia: {exc}"
+            return locales
+
+    def _payload(self, event, categoria: str) -> dict:
+        refs = self._subir_evidencia(event)
         return {
             "workspaceId": self.workspace,
             "cameraId": self.camaras.get(event.camera, event.camera),

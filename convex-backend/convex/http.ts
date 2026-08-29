@@ -234,9 +234,61 @@ export const demo = httpAction(async (ctx, request) => {
   });
 });
 
+const MAX_EVIDENCIA_BYTES = 5 * 1024 * 1024;
+const TIPOS_EVIDENCIA = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/**
+ * Guarda un fotograma del incidente y devuelve una URL publica.
+ *
+ * El pipeline ya adjuntaba `evidenceRefs`, pero apuntaban a su propio
+ * `PUBLIC_BASE_URL`, es decir al portatil que corre el analisis. Un correo de
+ * aviso abierto en un movil no puede alcanzar esa direccion, asi que la imagen
+ * no se veia. Subirla aqui la deja en un dominio publico y estable.
+ *
+ * Misma autenticacion que el intake: es el mismo servicio quien escribe.
+ */
+export const evidence = httpAction(async (ctx, request) => {
+  const requestId = createRequestId();
+
+  const esperado = process.env.INTAKE_SERVICE_TOKEN;
+  if (!esperado) {
+    return rechazar(
+      "INTERNAL_ERROR",
+      "INTAKE_SERVICE_TOKEN no esta configurado en el deployment",
+      503,
+      requestId,
+    );
+  }
+  const cabecera = request.headers.get("Authorization") ?? "";
+  const recibido = cabecera.startsWith("Bearer ") ? cabecera.slice(7) : "";
+  if (!recibido || !tokenValido(recibido, esperado)) {
+    return rechazar("UNAUTHORIZED", "Token de servicio invalido", 401, requestId);
+  }
+
+  const tipo = request.headers.get("Content-Type") ?? "";
+  if (!TIPOS_EVIDENCIA.has(tipo)) {
+    return rechazar("VALIDATION_ERROR", `Tipo no admitido: ${tipo}`, 400, requestId);
+  }
+
+  const blob = await request.blob();
+  if (blob.size === 0 || blob.size > MAX_EVIDENCIA_BYTES) {
+    return rechazar(
+      "VALIDATION_ERROR",
+      `Tamano fuera de rango: ${blob.size} bytes`,
+      400,
+      requestId,
+    );
+  }
+
+  const storageId = await ctx.storage.store(blob);
+  const url = await ctx.storage.getUrl(storageId);
+  return json({ storageId, url }, 200);
+});
+
 const http = httpRouter();
 
 http.route({ path: "/intake", method: "POST", handler: intake });
 http.route({ path: "/demo", method: "GET", handler: demo });
+http.route({ path: "/evidence", method: "POST", handler: evidence });
 
 export default http;

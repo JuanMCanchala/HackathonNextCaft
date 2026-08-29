@@ -311,3 +311,114 @@ describe("la accion de aviso", () => {
     expect(llamadas).toHaveLength(0);
   });
 });
+
+describe("el correo lleva la escena", () => {
+  async function conEvidencia(t: SentraTest, refs: string[]) {
+    const { workspaceId, cameraId } = await sembrar(t);
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId, { evidenceRefs: refs }),
+    );
+    return resultado.incidentId;
+  }
+
+  function htmlEnviado(): string {
+    const resend = llamadas.find((c) => c.url.includes("api.resend.com"));
+    return String(JSON.parse(String(resend?.init.body ?? "{}")).html ?? "");
+  }
+
+  it("incrusta el fotograma del incidente", async () => {
+    const t = createTestBackend();
+    const incidentId = await conEvidencia(t, [
+      "https://adventurous-wolf-401.convex.cloud/api/storage/abc.jpg",
+    ]);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const html = htmlEnviado();
+    expect(html).toContain("<img");
+    expect(html).toContain("adventurous-wolf-401.convex.cloud/api/storage/abc.jpg");
+    expect(html).toContain("Anden 3");
+    expect(html).toContain("agresion");
+  });
+
+  it("descarta las referencias que apuntan al equipo del analisis", async () => {
+    // El pipeline manda tambien rutas de su propio servidor local. Incrustarlas
+    // daria una imagen rota en el correo, que es peor que no poner ninguna.
+    const t = createTestBackend();
+    const incidentId = await conEvidencia(t, ["http://192.168.1.40:8000/clips/abc_03.jpg"]);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const html = htmlEnviado();
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("192.168.1.40");
+    expect(html).toContain("Sin fotograma disponible");
+  });
+
+  it("sin evidencia el correo sigue diciendo que ha pasado y donde", async () => {
+    const t = createTestBackend();
+    const incidentId = await conEvidencia(t, []);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const html = htmlEnviado();
+    expect(html).toContain("agresion");
+    expect(html).toContain("Anden 3");
+    expect(html).toContain("CRITICAL".toLowerCase());
+  });
+
+  it("manda tambien version en texto plano", async () => {
+    // Es lo que se lee cuando el cliente bloquea HTML, y ayuda a no caer en spam.
+    const t = createTestBackend();
+    const incidentId = await conEvidencia(t, []);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const resend = llamadas.find((c) => c.url.includes("api.resend.com"));
+    const cuerpo = JSON.parse(String(resend?.init.body ?? "{}"));
+    expect(String(cuerpo.text)).toContain("agresion");
+    expect(String(cuerpo.html).length).toBeGreaterThan(String(cuerpo.text).length);
+  });
+
+  it("una etiqueta de camara con html no se cuela en el correo", async () => {
+    const t = createTestBackend();
+    const { workspaceId } = await t.mutation(internal.seed.bootstrap, {
+      adminTokenIdentifier: "issuer|admin-xss",
+      adminSubjectId: "admin-xss",
+      workspaceName: "Planta",
+    });
+    const camara = await t
+      .withIdentity({ tokenIdentifier: "issuer|admin-xss", subject: "admin-xss" })
+      .mutation(api.cameras.create, {
+        workspaceId: workspaceId as Id<"workspaces">,
+        externalId: "cam-xss",
+        label: "<script>alert(1)</script>",
+      });
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId as Id<"workspaces">, camara.id as Id<"cameras">),
+    );
+
+    await t.action(internal.alerts.dispatch, {
+      incidentId: resultado.incidentId,
+      disposition: "created",
+    });
+
+    const html = htmlEnviado();
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("varios destinatarios se mandan como lista", async () => {
+    const t = createTestBackend();
+    process.env.ALERT_EMAIL_TO = " uno@ejemplo.com , dos@ejemplo.com ";
+    const incidentId = await conEvidencia(t, []);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const resend = llamadas.find((c) => c.url.includes("api.resend.com"));
+    const cuerpo = JSON.parse(String(resend?.init.body ?? "{}"));
+    expect(cuerpo.to).toEqual(["uno@ejemplo.com", "dos@ejemplo.com"]);
+  });
+});

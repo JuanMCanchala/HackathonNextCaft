@@ -84,10 +84,10 @@ variable de entorno no puede acabar llamando por un incidente menor.
 
 Cada intento queda en `incidentTimeline` del incidente:
 
-| tipo | cuando |
-|---|---|
-| `alert.sent` | el proveedor acepto el envio |
-| `alert.failed` | el proveedor rechazo o no respondio; el motivo va en `detail` |
+| tipo            | cuando                                                          |
+| --------------- | --------------------------------------------------------------- |
+| `alert.sent`    | el proveedor acepto el envio                                    |
+| `alert.failed`  | el proveedor rechazo o no respondio; el motivo va en `detail`   |
 | `alert.skipped` | no habia canal configurado, o la severidad no llegaba al umbral |
 
 Un incidente agrupado no deja rastro: que no vuelva a sonar el telefono es lo
