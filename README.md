@@ -148,13 +148,36 @@ la demo si la camara falla o la sala esta demasiado llena.
 
 ## Medir antes de presentar
 
+Un numero medido vale mas que cualquier adjetivo en el pitch. El benchmark
+reporta las **dos etapas por separado**, que es lo unico que demuestra si la
+cascada aporta algo: la Etapa 1 debe tener recall alto aunque falle en
+precision, y la Etapa 2 debe tumbar los falsos positivos sin llevarse el recall.
+
 ```powershell
-.venv\Scripts\python.exe -m tools.bench data\samples --domain retail_theft
+# 1. Bajar un dataset publico y dejarlo con nombres pos_/neg_
+.venv\Scripts\kaggle.exe auth login
+.venv\Scripts\python.exe -m tools.get_dataset --list
+.venv\Scripts\python.exe -m tools.get_dataset rwf2000
+
+# 2. Etapa 1 sobre todo el conjunto: gratis y ~3x mas rapido que tiempo real
+.venv\Scripts\python.exe -m tools.bench datawf2000 --domain violence --no-vlm
+
+# 3. Etapa 1+2 sobre una muestra, que si gasta cuota de API
+.venv\Scripts\python.exe -m tools.bench datawf2000 --domain violence ^
+    --limit 40 --out dataench_rwf2000.json
 ```
 
-Espera una carpeta con clips nombrados `pos_*.mp4` (hay incidente) y `neg_*.mp4`
-(no lo hay), y devuelve precision, recall y cuantas llamadas al VLM ahorro el
-filtro de la Etapa 1. Ese ultimo numero es el argumento economico del proyecto.
+Si teneis clips propios, `tools/prepare_dataset.py` los adapta igual. Grabar 10
+`pos_` y 10 `neg_` en la sala de la demo sigue siendo lo mas valioso: es la
+unica distribucion que coincide con lo que vera el jurado.
+
+### Datasets y sus trampas
+
+| Dataset | Para que sirve | Trampa |
+|---|---|---|
+| RWF-2000 | Violencia. El mas limpio: 5 s, balanceado, split predefinido | Kaggle lo mirrorea; el original pide permiso al SMIIP Lab |
+| RLVS | Violencia, fuentes mas variadas | Mezcla peliculas con CCTV real |
+| UCF-Crime | Credibilidad de benchmark | 240p de CCTV: la pose degrada y la Etapa 1 pierde recall. Decirlo en el pitch suma, no resta |
 
 ---
 

@@ -1,20 +1,29 @@
-"""Mide el pipeline sobre clips etiquetados y devuelve numeros para el pitch.
+"""Mide el pipeline sobre clips etiquetados y da los numeros para el pitch.
 
-Convencion de nombres en la carpeta:
-    pos_*.mp4  -> el clip contiene un incidente
-    neg_*.mp4  -> el clip no lo contiene
+Reporta las DOS etapas por separado, que es lo unico que demuestra si la
+cascada aporta algo:
 
-Uso:
-    .venv\\Scripts\\python.exe -m tools.bench data\\samples --domain retail_theft
+  Etapa 1   filtro geometrico, gratis. Se busca recall alto aunque la precision
+            sea mala: lo que se pierde aqui no lo recupera nadie.
+  Etapa 1+2 con el veredicto del VLM. Aqui es donde debe caer la tasa de falsos
+            positivos sin llevarse por delante el recall.
+
+Convencion de nombres en la carpeta: `pos_*` contiene incidente, `neg_*` no.
+
+    .venv\\Scripts\\python.exe -m tools.bench data\\rwf2000 --domain violence
+    .venv\\Scripts\\python.exe -m tools.bench data\\rwf2000 --limit 100 --no-vlm
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from backend import config
 from backend.core.buffer import RingBuffer
@@ -23,28 +32,112 @@ from backend.core.signals import TrackHistory
 from backend.core.tracker import PoseTracker
 from backend.core.vlm import VLMJudge
 
+VIDEO_EXT = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+TARGET_FPS = 12.0          # igual que el analizador de videos subidos
+MAX_VLM_PER_CLIP = 2       # un clip de 5 s no necesita mas veredictos
 
-def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge, use_vlm: bool):
-    """Devuelve (disparos_gate, incidentes_vlm, frames, segundos_procesados)."""
+
+@dataclass
+class Counts:
+    """Matriz de confusion de una etapa."""
+
+    tp: int = 0
+    fp: int = 0
+    fn: int = 0
+    tn: int = 0
+
+    def add(self, expected: bool, predicted: bool) -> None:
+        if expected and predicted:
+            self.tp += 1
+        elif expected:
+            self.fn += 1
+        elif predicted:
+            self.fp += 1
+        else:
+            self.tn += 1
+
+    @property
+    def recall(self) -> float | None:
+        d = self.tp + self.fn
+        return self.tp / d if d else None
+
+    @property
+    def precision(self) -> float | None:
+        d = self.tp + self.fp
+        return self.tp / d if d else None
+
+    @property
+    def fpr(self) -> float | None:
+        """Falsos positivos sobre el total de negativos reales."""
+        d = self.fp + self.tn
+        return self.fp / d if d else None
+
+    @property
+    def fnr(self) -> float | None:
+        """Falsos negativos sobre los positivos reales: lo que se escapa."""
+        d = self.fn + self.tp
+        return self.fn / d if d else None
+
+    @property
+    def f1(self) -> float | None:
+        p, r = self.precision, self.recall
+        return 2 * p * r / (p + r) if p and r else None
+
+    def as_dict(self) -> dict:
+        return {
+            "tp": self.tp, "fp": self.fp, "fn": self.fn, "tn": self.tn,
+            "recall": self.recall, "precision": self.precision,
+            "fpr": self.fpr, "fnr": self.fnr, "f1": self.f1,
+        }
+
+
+@dataclass
+class Totals:
+    frames: int = 0
+    seconds: float = 0.0
+    triggers: int = 0
+    vlm_calls: int = 0
+    vlm_errors: int = 0
+    latencies: list[int] = field(default_factory=list)
+
+
+def _pct(v: float | None) -> str:
+    return f"{v:.1%}" if v is not None else "n/a"
+
+
+def _bbox_at(samples: list, ts: float, ratio: float):
+    if not samples:
+        return None
+    st, bbox, _kp = min(samples, key=lambda s: abs(s[0] - ts))
+    return [v * ratio for v in bbox]
+
+
+def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
+             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int]:
+    """Devuelve (disparo el gate, lo confirmo el VLM, numero de disparos)."""
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
-        raise RuntimeError(f"no se pudo abrir {path}")
+        raise RuntimeError("no se pudo abrir")
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    buffer = RingBuffer(config.BUFFER_SECONDS, fps=fps)
+    src_fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    step = max(1, int(round(src_fps / TARGET_FPS)))
+    buffer = RingBuffer(config.BUFFER_SECONDS, fps=src_fps / step)
     histories: dict[int, TrackHistory] = {}
-    triggers = 0
-    incidents = 0
-    frames = 0
-    t = 0.0
+    pending: list[tuple] = []
+    index = 0
 
     while True:
         ok, frame = cap.read()
         if not ok:
             break
-        frames += 1
-        t += 1.0 / fps
+        index += 1
+        if index % step:
+            continue
+
+        t = index / src_fps
+        totals.frames += 1
         buffer.push(t, frame)
+        ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
 
         for track in tracker(frame):
             hist = histories.setdefault(track["id"], TrackHistory(track["id"]))
@@ -54,104 +147,183 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge, use_
                "zones": gate.domain.zones}
 
         for hist in list(histories.values()):
-            if abs(hist.last_seen - t) > 1e-6:
+            if abs(hist.last_seen - t) > 1e-9:
                 continue
             values, _score, fire = gate.evaluate(hist, ctx)
-            if not fire:
-                continue
-            triggers += 1
-            if not use_vlm:
-                continue
-            try:
-                ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
-                verdict, _f, _ms = judge.judge(
-                    buffer, gate.domain, values,
-                    t - config.CLIP_PRE_SECONDS, t,
-                    lambda ts, h=hist, r=ratio: _bbox_at(h, ts, r),
-                )
-                incidents += int(verdict.incident)
-            except Exception as exc:                      # noqa: BLE001
-                print(f"    aviso: fallo el VLM ({exc})", file=sys.stderr)
+            if fire and len(pending) < MAX_VLM_PER_CLIP:
+                pending.append((dict(values), t, ratio,
+                                [(s.t, np.array(s.bbox, copy=True),
+                                  np.array(s.kp, copy=True)) for s in hist.samples]))
+
+        for tid in [k for k, h in histories.items() if t - h.last_seen > 2.0]:
+            histories.pop(tid, None)
+            gate.forget(tid)
 
     cap.release()
-    return triggers, incidents, frames, t
+    totals.seconds += index / src_fps
+    totals.triggers += len(pending)
+
+    if not use_vlm or not pending:
+        return bool(pending), False, len(pending)
+
+    confirmed = False
+    for values, t, ratio, samples in pending:
+        totals.vlm_calls += 1
+        try:
+            verdict, _frames, latency = judge.judge(
+                buffer, gate.domain, values,
+                t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS,
+                lambda ts, s=samples, r=ratio: _bbox_at(s, ts, r),
+            )
+            totals.latencies.append(latency)
+            confirmed = confirmed or verdict.incident
+        except Exception as exc:                          # noqa: BLE001
+            totals.vlm_errors += 1
+            print(f"      aviso: fallo el VLM ({exc})", file=sys.stderr)
+
+    return True, confirmed, len(pending)
 
 
-def _bbox_at(hist: TrackHistory, ts: float, ratio: float):
-    if not hist.samples:
-        return None
-    sample = min(hist.samples, key=lambda s: abs(s.t - ts))
-    return [v * ratio for v in sample.bbox]
+def collect(folder: Path, limit: int) -> list[tuple[Path, bool]]:
+    pos = sorted(p for p in folder.iterdir()
+                 if p.suffix.lower() in VIDEO_EXT and p.stem.startswith("pos_"))
+    neg = sorted(p for p in folder.iterdir()
+                 if p.suffix.lower() in VIDEO_EXT and p.stem.startswith("neg_"))
+    if limit:
+        pos, neg = pos[:limit], neg[:limit]
+    return [(p, True) for p in pos] + [(p, False) for p in neg]
+
+
+def _block(c: Counts) -> None:
+    print(f"  TP {c.tp:<5} FP {c.fp:<5} FN {c.fn:<5} TN {c.tn}")
+    print(f"  recall (detecta)          {_pct(c.recall)}")
+    print(f"  precision (acierta)       {_pct(c.precision)}")
+    print(f"  falsos positivos (FPR)    {_pct(c.fpr)}   de los clips sin incidente")
+    print(f"  falsos negativos (FNR)    {_pct(c.fnr)}   de los clips con incidente")
+    print(f"  F1                        {_pct(c.f1)}")
+
+
+def report(stage1: Counts, stage2: Counts, totals: Totals,
+           use_vlm: bool, clips: int, wall: float) -> None:
+    print()
+    print("=" * 66)
+    print("  ETAPA 1  ·  filtro geometrico (local, coste cero)")
+    print("=" * 66)
+    _block(stage1)
+    print("  Lo que se pierde aqui no lo recupera nadie: la Etapa 2 solo puede")
+    print("  descartar, nunca resucitar un incidente que el gate no vio.")
+
+    if use_vlm:
+        print()
+        print("=" * 66)
+        print("  ETAPA 1+2  ·  con el veredicto del VLM")
+        print("=" * 66)
+        _block(stage2)
+
+        quitados = stage1.fp - stage2.fp
+        base = stage1.fp or 1
+        print()
+        print("=" * 66)
+        print("  QUE APORTA LA ETAPA 2")
+        print("=" * 66)
+        print(f"  falsos positivos     {stage1.fp} -> {stage2.fp}   "
+              f"({-quitados / base:+.1%})")
+        print(f"  recall               {_pct(stage1.recall)} -> {_pct(stage2.recall)}")
+        print(f"  precision            {_pct(stage1.precision)} -> {_pct(stage2.precision)}")
+
+    ahorro = 1 - (totals.triggers / totals.frames) if totals.frames else 0.0
+    print()
+    print("=" * 66)
+    print("  COSTE")
+    print("=" * 66)
+    print(f"  clips                {clips}")
+    print(f"  frames analizados    {totals.frames}  ({totals.seconds:.0f}s de video)")
+    print(f"  llamadas al VLM      {totals.vlm_calls}"
+          + (f"   ({totals.vlm_errors} fallidas)" if totals.vlm_errors else ""))
+    print(f"  ahorro de la etapa 1 {ahorro:.2%} de los frames nunca llegan al VLM")
+    if totals.latencies:
+        print(f"  latencia media VLM   {sum(totals.latencies) // len(totals.latencies)} ms")
+    if wall > 0:
+        print(f"  tiempo total         {wall:.0f}s "
+              f"({totals.seconds / wall:.1f}x tiempo real)")
+    print()
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("folder", type=Path)
     ap.add_argument("--domain", default=config.DOMAIN)
+    ap.add_argument("--limit", type=int, default=0,
+                    help="maximo de clips por clase (0 = todos)")
     ap.add_argument("--no-vlm", action="store_true",
-                    help="mide solo el gate, sin gastar cuota de API")
+                    help="mide solo la Etapa 1, sin gastar cuota de API")
+    ap.add_argument("--out", type=Path, default=None,
+                    help="guarda el resultado en JSON")
     args = ap.parse_args()
 
     domains = load_domains(config.DOMAINS_DIR)
     if args.domain not in domains:
         print(f"dominio desconocido: {args.domain}. Hay: {list(domains)}")
         return 2
-
-    exts = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
-    clips = sorted(p for p in args.folder.iterdir()
-                   if p.suffix.lower() in exts and p.stem.startswith(("pos_", "neg_")))
-    if not clips:
-        print(f"No hay clips pos_* / neg_* en {args.folder}")
+    if not args.folder.is_dir():
+        print(f"no existe la carpeta {args.folder}")
         return 2
 
-    tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
-                          imgsz=config.POSE_IMGSZ)
+    clips = collect(args.folder, args.limit)
+    if not clips:
+        print(f"No hay clips pos_* / neg_* en {args.folder}.")
+        print("Usa tools/prepare_dataset.py para renombrarlos.")
+        return 2
+
     judge = VLMJudge()
     use_vlm = not args.no_vlm and not judge.offline
+    tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
+                          imgsz=config.POSE_IMGSZ)
 
-    tp = fp = fn = tn = 0
-    total_triggers = 0
-    total_frames = 0
-    total_seconds = 0.0
+    stage1, stage2, totals = Counts(), Counts(), Totals()
     wall = time.time()
+    n_pos = sum(1 for _p, e in clips if e)
 
-    print(f"\nDominio: {domains[args.domain].label}   VLM: {'si' if use_vlm else 'no'}\n")
-    for clip in clips:
+    print(f"\nDominio: {domains[args.domain].label}")
+    print(f"Clips:   {len(clips)}  ({n_pos} con incidente, {len(clips) - n_pos} sin)")
+    print(f"VLM:     {'si' if use_vlm else 'no (solo Etapa 1)'}\n")
+
+    for i, (path, expected) in enumerate(clips, start=1):
         gate = Gate(domains[args.domain])
-        triggers, incidents, frames, seconds = run_clip(clip, tracker, gate, judge, use_vlm)
-        positive = incidents > 0 if use_vlm else triggers > 0
-        expected = clip.stem.startswith("pos_")
+        try:
+            fired, confirmed, n = run_clip(path, tracker, gate, judge, use_vlm, totals)
+        except Exception as exc:                          # noqa: BLE001
+            print(f"  [{i}/{len(clips)}] {path.name}: ERROR {exc}", file=sys.stderr)
+            continue
 
-        total_triggers += triggers
-        total_frames += frames
-        total_seconds += seconds
+        stage1.add(expected, fired)
+        if use_vlm:
+            stage2.add(expected, confirmed)
 
-        if expected and positive:
-            tp += 1; mark = "OK  "
-        elif expected and not positive:
-            fn += 1; mark = "FN  "
-        elif not expected and positive:
-            fp += 1; mark = "FP  "
-        else:
-            tn += 1; mark = "OK  "
-        print(f"  {mark} {clip.name:<34} gate={triggers}  vlm+={incidents}")
+        predicted = confirmed if use_vlm else fired
+        mark = "ok " if predicted == expected else ("FN " if expected else "FP ")
+        print(f"  [{i}/{len(clips)}] {mark} {path.name[:38]:<38} "
+              f"gate={n} vlm={'si' if confirmed else 'no'}")
 
-    precision = tp / (tp + fp) if (tp + fp) else None
-    recall = tp / (tp + fn) if (tp + fn) else None
-    f1 = (2 * precision * recall / (precision + recall)
-          if precision and recall else None)
+    report(stage1, stage2, totals, use_vlm, len(clips), time.time() - wall)
 
-    # Cuantas llamadas se habrian hecho analizando cada frame contra las reales.
-    saved = 1 - (total_triggers / total_frames) if total_frames else 0.0
+    if args.out:
+        args.out.write_text(json.dumps({
+            "domain": args.domain,
+            "clips": len(clips),
+            "positives": n_pos,
+            "used_vlm": use_vlm,
+            "stage1": stage1.as_dict(),
+            "stage2": stage2.as_dict() if use_vlm else None,
+            "frames": totals.frames,
+            "seconds_of_video": round(totals.seconds, 1),
+            "vlm_calls": totals.vlm_calls,
+            "vlm_errors": totals.vlm_errors,
+            "avg_latency_ms": (sum(totals.latencies) // len(totals.latencies)
+                               if totals.latencies else None),
+        }, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"  resultado guardado en {args.out}\n")
 
-    print(f"\n  clips           {len(clips)}   (TP {tp}  FP {fp}  FN {fn}  TN {tn})")
-    print(f"  precision       {precision:.2%}" if precision is not None else "  precision       n/a")
-    print(f"  recall          {recall:.2%}" if recall is not None else "  recall          n/a")
-    print(f"  F1              {f1:.2%}" if f1 is not None else "  F1              n/a")
-    print(f"\n  frames          {total_frames} ({total_seconds:.0f}s de video)")
-    print(f"  llamadas VLM    {total_triggers}")
-    print(f"  ahorro etapa 1  {saved:.2%} de las llamadas evitadas")
-    print(f"  tiempo real     {time.time() - wall:.1f}s\n")
     return 0
 
 
