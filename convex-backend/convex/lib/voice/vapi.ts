@@ -4,14 +4,13 @@
  * Se prefiere a Twilio para el aviso hablado por una razon concreta: Twilio
  * lee un texto y cuelga, y quien contesta a las tres de la manana casi siempre
  * quiere preguntar algo -cuantas personas, si sigue en el suelo, si hay que
- * avisar a nadie mas-. Vapi mantiene la conversacion con el contexto del
+ * avisar a alguien mas-. Vapi mantiene la conversacion con el contexto del
  * incidente ya cargado, asi que el responsable puede repreguntar sin abrir el
  * panel. El canal de Twilio se mantiene como alternativa.
  *
- * Los datos del incidente van en `assistantOverrides.variableValues`, no
- * concatenados en el guion: el asistente vive en Vapi y aqui solo se le pasan
- * los valores de esta llamada. Asi el guion se puede afinar desde su panel sin
- * volver a desplegar este backend.
+ * El guion vive en Vapi, no aqui. Desde este backend solo viajan los valores
+ * de esta llamada, que el asistente interpola con {{tipo}}, {{camara}} y
+ * demas. Asi se puede afinar el tono desde su panel sin volver a desplegar.
  */
 
 export type DatosLlamada = {
@@ -27,29 +26,18 @@ export type ResultadoLlamada = { ok: boolean; detalle: string };
 
 const TIMEOUT_MS = 15_000;
 
+/**
+ * Lo primero que se oye al descolgar.
+ *
+ * Repite tipo y camara antes de acabar la frase a proposito: por telefono un
+ * dato que solo suena una vez se pierde, y esta llamada puede terminar en
+ * cuanto la persona entienda que tiene que moverse.
+ */
 function primeraFrase(d: DatosLlamada): string {
   return (
     `Alerta de seguridad de Sentinel. Se ha detectado ${d.tipo} en la camara ${d.camara}, ` +
     `a las ${d.hora}. Repito: ${d.tipo} en camara ${d.camara}.`
   );
-}
-
-function contexto(d: DatosLlamada): string {
-  const lineas = [
-    `Tipo de incidente: ${d.tipo}`,
-    `Camara: ${d.camara}`,
-    `Severidad: ${d.severidad}`,
-    `Hora: ${d.hora}`,
-  ];
-  if (d.confianza !== null) {
-    lineas.push(`Confianza del detector: ${Math.round(d.confianza * 100)} por ciento`);
-  }
-  lineas.push(
-    d.resumen === null
-      ? "Descripcion de la escena: no disponible."
-      : `Descripcion de la escena: ${d.resumen}`,
-  );
-  return lineas.join("\n");
 }
 
 export async function llamarPorVapi(
@@ -63,22 +51,22 @@ export async function llamarPorVapi(
     customer: { number: env.ALERT_PHONE_TO },
     assistantOverrides: {
       firstMessage: primeraFrase(datos),
+      // Todo el contexto viaja como variables.
+      //
+      // Se intento antes pasarlo sobrescribiendo `model.messages`, y Vapi lo
+      // rechaza con un 400: un override de modelo tiene que traer el objeto
+      // completo, proveedor incluido. Duplicar aqui esa configuracion habria
+      // significado que cambiar el modelo en Vapi dejara de surtir efecto.
       variableValues: {
         tipo: datos.tipo,
         camara: datos.camara,
         severidad: datos.severidad,
         hora: datos.hora,
+        confianza:
+          datos.confianza === null
+            ? "no disponible"
+            : `${Math.round(datos.confianza * 100)} por ciento`,
         resumen: datos.resumen ?? "no disponible",
-      },
-      // El contexto va como mensaje de sistema adicional para que el asistente
-      // pueda contestar repreguntas sin inventarse nada.
-      model: {
-        messages: [
-          {
-            role: "system",
-            content: `Datos del incidente que motiva esta llamada:\n${contexto(datos)}`,
-          },
-        ],
       },
     },
   };

@@ -751,7 +751,6 @@ describe("llamada de voz por Vapi", () => {
       assistantOverrides: {
         firstMessage: string;
         variableValues: Record<string, string>;
-        model: { messages: Array<{ content: string }> };
       };
     };
     expect(cuerpo.assistantId).toBe("asistente-1");
@@ -761,9 +760,9 @@ describe("llamada de voz por Vapi", () => {
     expect(cuerpo.assistantOverrides.firstMessage).toContain("agresion");
     expect(cuerpo.assistantOverrides.firstMessage).toContain("Repito");
     expect(cuerpo.assistantOverrides.variableValues.camara).toBe("Anden 3");
-    expect(cuerpo.assistantOverrides.model.messages[0]?.content).toContain(
-      "Dos personas forcejean",
-    );
+    // El guion vive en Vapi e interpola {{resumen}}; desde aqui solo van los
+    // valores de esta llamada.
+    expect(cuerpo.assistantOverrides.variableValues.resumen).toContain("Dos personas forcejean");
   });
 
   it("si Vapi falla queda el motivo y sin credenciales", async () => {
