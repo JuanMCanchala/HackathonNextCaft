@@ -11,6 +11,7 @@ const PIPELINE = [
   { step: '04', label: 'SOC', detail: 'Operadores clasifican, priorizan y dan seguimiento' },
 ] as const;
 
+/* Taxonomía — oculto en landing (reactivar cuando convenga)
 const CATEGORIES = [
   { key: 'fall', label: 'Posible caída', severity: 'critical' },
   { key: 'violence', label: 'Posible altercado', severity: 'critical' },
@@ -19,6 +20,7 @@ const CATEGORIES = [
   { key: 'theft', label: 'Comportamiento sospechoso', severity: 'medium' },
   { key: 'ppe_missing', label: 'Posible falta de EPP', severity: 'low' },
 ] as const;
+*/
 
 const FEED = [
   { time: '14:02:11', cam: 'ENTRADA-N', cat: 'intrusion', sev: 'high', conf: '94%' },
@@ -284,7 +286,7 @@ const FEED = [
         </div>
       </section>
 
-      <!-- Categorías -->
+      <!-- Categorías (oculto)
       <section class="py-20 lg:py-28">
         <div class="mx-auto max-w-7xl px-6 lg:px-12">
           <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
@@ -321,6 +323,7 @@ const FEED = [
           </div>
         </div>
       </section>
+      -->
 
       <!-- CTA -->
       <section class="border-t border-border/60 bg-[var(--sentra-bg-panel)] py-16 lg:py-20">
@@ -349,6 +352,6 @@ export class LandingPageComponent {
   readonly signInUrl = clerkConfig.signInUrl;
   readonly signUpUrl = clerkConfig.signUpUrl;
   readonly pipeline = PIPELINE;
-  readonly categories = CATEGORIES;
+  // readonly categories = CATEGORIES;
   readonly feedDoubled = [...FEED, ...FEED];
 }
