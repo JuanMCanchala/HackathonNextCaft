@@ -9,3 +9,4 @@ dist/
 data/clips/*
 data/events.jsonl
 !data/clips/.gitkeep
+data/*.log
