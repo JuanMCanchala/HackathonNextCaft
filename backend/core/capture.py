@@ -1,6 +1,7 @@
 """Etapa 0a: captura de video en hilo propio, siempre el frame mas reciente."""
 from __future__ import annotations
 
+import sys
 import threading
 import time
 
@@ -12,6 +13,17 @@ def _resolve(source: str):
     if source.isdigit():
         return int(source)
     return source
+
+
+def _capture_backend(source) -> int:
+    """Select the native camera backend for the current operating system."""
+    if not isinstance(source, int):
+        return cv2.CAP_ANY
+    if sys.platform.startswith("win"):
+        return cv2.CAP_DSHOW
+    if sys.platform.startswith("linux"):
+        return cv2.CAP_V4L2
+    return cv2.CAP_ANY
 
 
 class Camera:
@@ -31,7 +43,7 @@ class Camera:
         self.error: str | None = None
 
     def open(self) -> None:
-        backend = cv2.CAP_DSHOW if isinstance(self.source, int) else cv2.CAP_ANY
+        backend = _capture_backend(self.source)
         cap = cv2.VideoCapture(self.source, backend)
         if isinstance(self.source, int):
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
