@@ -93,6 +93,46 @@ class Notifier:
             out.append("webhook")
         return out
 
+    def payload(self, event, domain_label: str) -> dict:
+        """Cuerpo del webhook, ya masticado para reenviar por WhatsApp.
+
+        `message` viene con el formato de WhatsApp (*negrita*) para poder
+        mandarlo tal cual, e `image_url` apunta al frame de evidencia. Ese enlace
+        solo es alcanzable desde fuera si PUBLIC_BASE_URL apunta a una URL
+        publica (un tunel o el despliegue); en local queda a null.
+        """
+        v = event.verdict
+        image_url = None
+        if event.frames and config.PUBLIC_BASE_URL:
+            middle = event.frames[len(event.frames) // 2]
+            image_url = f"{config.PUBLIC_BASE_URL.rstrip('/')}/clips/{middle}"
+
+        message = (
+            f"*Incidente detectado — {domain_label}*\n"
+            f"{v.incident_type} · confianza {int(v.confidence * 100)}%\n\n"
+            f"{v.evidence}"
+        )
+        if v.recommended_action:
+            message += f"\n\n_Accion sugerida:_ {v.recommended_action}"
+
+        return {
+            "message": message,
+            "text": _caption(event, domain_label),
+            "image_url": image_url,
+            "event_id": event.id,
+            "domain": event.domain,
+            "domain_label": domain_label,
+            "incident_type": v.incident_type,
+            "confidence": v.confidence,
+            "evidence": v.evidence,
+            "recommended_action": v.recommended_action,
+            "gate_score": event.gate_score,
+            "signals": event.signals,
+            "source": event.source,
+            "offset": event.offset,
+            "occurred_at": event.created_at,
+        }
+
     def notify(self, event, domain_label: str) -> None:
         """No bloquea: el aviso nunca debe frenar el analisis del siguiente clip."""
         if not self.enabled or event.verdict is None or not event.verdict.incident:
@@ -110,17 +150,9 @@ class Notifier:
             ok_any |= self._telegram(event, caption)
 
         if self.webhook:
-            payload = {
-                "text": caption,
-                "domain": event.domain,
-                "incident_type": event.verdict.incident_type,
-                "confidence": event.verdict.confidence,
-                "evidence": event.verdict.evidence,
-                "event_id": event.id,
-                "gate_score": event.gate_score,
-                "signals": event.signals,
-            }
-            ok, detail = _post(self.webhook, json.dumps(payload).encode(), "application/json")
+            ok, detail = _post(self.webhook,
+                               json.dumps(self.payload(event, domain_label)).encode(),
+                               "application/json")
             ok_any |= ok
             if not ok:
                 self.last_error = f"webhook: {detail}"

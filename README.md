@@ -46,8 +46,14 @@ Camara (webcam / archivo / RTSP)
   +-- ETAPA 2   VLM, solo en disparos (~1 cada 15-45 s por persona)
   |   10 frames del buffer con el sujeto marcado -> Gemini -> JSON validado
   |
-  +-- ETAPA 3   evento, clip de evidencia, WebSocket, feedback humano
+  +-- ETAPA 3   evento, clip de evidencia, cronologia, WebSocket, aviso externo
 ```
+
+**Multi-camara.** N camaras comparten UN presupuesto de inferencia repartido
+round-robin, no N pipelines. Cada feed lleva su propia instancia de tracker
+porque ByteTrack guarda estado y mezclarlo confundiria las identidades de una
+sala con las de otra. Medido con dos feeds en CPU: 28,6 + 12,0 = 40,6 FPS de
+inferencia total, sin que ninguna camara ahogue a la otra.
 
 Que gana cada etapa: la 0 y la 1 dan el "tiempo real" honesto; la 2 da la
 explicacion en lenguaje natural que un operador puede leer y auditar; la 3
@@ -115,10 +121,13 @@ desarrollar sin gastar cuota.
 |---|---|---|
 | `GEMINI_API_KEY` | — | Key de [AI Studio](https://aistudio.google.com/apikey) |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Modelo de la Etapa 2 |
-| `SENTINEL_SOURCE` | `0` | Indice de webcam, ruta a un `.mp4` o URL RTSP |
+| `SENTINEL_SOURCE` | `0` | Camaras separadas por coma, con nombre opcional: `Entrada=0,Almacen=rtsp://...` |
 | `SENTINEL_DOMAIN` | `retail_theft` | Dominio inicial |
 | `SENTINEL_DEVICE` | `cuda` | `cuda` o `cpu` |
 | `SENTINEL_POSE_IMGSZ` | `480` | Resolucion de inferencia. Subir a 640 si sobra GPU |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | — | Avisa al movil con la foto del incidente |
+| `ALERT_WEBHOOK_URL` | — | Webhook generico (WhatsApp via FunnelChat, Slack, Discord) |
+| `PUBLIC_BASE_URL` | — | Base publica para que el webhook incluya un enlace a la evidencia |
 
 **Eleccion de modelo.** Medido sobre esta misma tarea con 10 frames:
 
@@ -149,14 +158,31 @@ filtro de la Etapa 1. Ese ultimo numero es el argumento economico del proyecto.
 
 ---
 
+## Que mas hace
+
+- **Sube un MP4 y lo analiza** con la misma cascada. Un jurado puede traer su
+  propio video. Medido: 12,5 s de video en 8,4 s, mas rapido que tiempo real.
+- **Cronologia del incidente** derivada de las senales medidas frame a frame,
+  no inventada por el modelo. Cada linea es auditable contra su numero.
+- **Pregunta sobre un incidente**: se le devuelven los mismos frames al VLM para
+  que mire otra vez, en vez de fiarse de su propio resumen.
+- **Avisos externos**: Telegram con la foto, o webhook generico para WhatsApp via
+  FunnelChat, Slack o Discord. Solo con incidentes que la Etapa 2 confirma.
+- **Boton de pausa** que suelta las camaras sin tumbar la API.
+
 ## API
+
+El contrato completo, con los gotchas, esta en [API.md](API.md).
 
 | Metodo | Ruta | Que hace |
 |---|---|---|
-| GET | `/api/state` | FPS, personas, senales vivas, estadisticas |
-| GET | `/api/domains` | Dominios cargados y sus pesos |
-| POST | `/api/domain/{id}` | Cambia de vertical en caliente |
+| GET | `/api/state` | FPS, camaras, senales vivas, estadisticas |
+| GET | `/api/cameras` | Estado por camara |
+| GET | `/api/domains` · POST `/api/domain/{id}` | Verticales; cambio en caliente |
 | GET | `/api/events` | Historial de eventos |
 | POST | `/api/events/{id}/feedback` | `confirmed` o `false_positive` |
-| GET | `/video.mjpg` | Video anotado en vivo |
-| WS | `/ws` | Estado cada 500 ms y eventos al vuelo |
+| POST | `/api/events/{id}/chat` | Pregunta libre sobre un incidente |
+| POST | `/api/analyze` · GET `/api/jobs` | Sube y analiza un video |
+| POST | `/api/pause` · `/api/resume` | Suelta o reabre las camaras |
+| GET | `/video.mjpg?camera={id}` | Video anotado en vivo |
+| WS | `/ws` | Estado cada 500 ms, eventos y progreso al vuelo |

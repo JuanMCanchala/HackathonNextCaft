@@ -56,6 +56,9 @@ Si el socket se cae, reconectar: el `bootstrap` vuelve a dejar el front al dia.
 | `offline` | `true` = sin `GEMINI_API_KEY`, los veredictos son sinteticos. Conviene avisarlo |
 | `tracks[].score` | 0-1. Comparar contra `threshold` para pintar a la persona en rojo |
 | `tracks[].signals` | Las senales del dominio activo. Cambian al cambiar de dominio |
+| `cameras` | Una entrada por camara: `{ id, label, source, fps, people, error, tracks }`. `tracks` de nivel superior es un alias de `cameras[0].tracks` |
+| `fps` | Suma de todas las camaras. El por-camara esta en `cameras[].fps` |
+| `alerts` | `{ channels, sent, error }`. `channels` vacio = sin credenciales de aviso |
 | `stats.precision` | `null` hasta que haya al menos un feedback humano |
 
 ### `bootstrap` — una vez al conectar
@@ -98,6 +101,13 @@ setEvents(prev => [msg.event, ...prev.filter(e => e.id !== msg.event.id)])
     "recommended_action": "Avisar al personal de sala antes de la salida."
   },
   "frames": ["a3f9c1b027_00.jpg", "a3f9c1b027_01.jpg", "..."],
+  "timeline": [
+    { "t": -1.8, "note": "la mano se dirige al torso", "signals": {}, "trigger": false },
+    { "t": 0.0, "note": "el filtro geometrico dispara", "signals": {}, "trigger": true }
+  ],
+  "camera": "Entrada",
+  "source": "live",
+  "offset": null,
   "feedback": null,
   "latency_ms": 2840
 }
@@ -116,6 +126,23 @@ setEvents(prev => [msg.event, ...prev.filter(e => e.id !== msg.event.id)])
 orden cronologico, tipicamente 10. Animarlos a ~260 ms da el clip de evidencia.
 `latency_ms` es lo que tardo la Etapa 2 de punta a punta.
 
+`timeline` sale de las senales medidas frame a frame, no del modelo: cada
+linea es auditable contra el numero que la produjo. `t` es relativo al
+disparo, en segundos. `camera` es la etiqueta de la camara; `source` vale
+`live` o el nombre del video subido, y `offset` los segundos dentro de ese
+video.
+
+### Mensaje `job` (analisis de un video subido)
+
+```json
+{ "type": "job", "job": { "id": "...", "name": "robo.mp4",
+  "status": "running", "progress": 0.42, "frames": 320,
+  "triggers": 2, "incidents": 1, "duration": 45.0, "error": null } }
+```
+
+`status`: `queued`, `running`, `done`, `error`. El `bootstrap` inicial trae
+tambien un array `jobs`.
+
 ---
 
 ## 3. Endpoints HTTP
@@ -127,9 +154,14 @@ orden cronologico, tipicamente 10. Animarlos a ~260 ms da el clip de evidencia.
 | POST | `/api/domain/{id}` | `{ active }`. Cambia de vertical en caliente, sin reiniciar |
 | GET | `/api/events` | `{ events: [Event] }` |
 | POST | `/api/events/{id}/feedback` | El `Event` actualizado |
-| POST | `/api/pause` | El estado ya pausado. Suelta la camara y detiene la inferencia |
-| POST | `/api/resume` | El estado ya reanudado. Reabre la camara |
-| GET | `/video.mjpg` | Stream MJPEG anotado |
+| POST | `/api/pause` | El estado ya pausado. Suelta las camaras y detiene la inferencia |
+| POST | `/api/resume` | El estado ya reanudado. Reabre las camaras |
+| GET | `/api/cameras` | `{ cameras: [{ id, label, source, fps, people, error, tracks }] }` |
+| POST | `/api/analyze` | Sube un video (multipart, campo `file`, max 200 MB) y devuelve un `Job` |
+| GET | `/api/jobs` | `{ jobs: [Job] }` |
+| POST | `/api/events/{id}/chat` | `{ question }` -> `{ answer, history }` |
+| GET | `/api/events/{id}/chat` | `{ history }` |
+| GET | `/video.mjpg?camera={id}` | Stream MJPEG anotado. Sin `camera`, la principal |
 | GET | `/clips/{nombre}` | Un frame de evidencia |
 
 ### Feedback humano

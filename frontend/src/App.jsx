@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, Eye, HardHat, Layers,
-  FileVideo, Pause, PersonStanding, Play, Power, Radio, ShieldCheck, ShoppingBag,
-  Swords, ThumbsDown, Upload,
+  Clock3, FileVideo, MessageSquare, Pause, PersonStanding, Play, Power, Radio,
+  Cctv,
+  Send, ShieldCheck, ShoppingBag, Swords, ThumbsDown, Upload,
   ThumbsUp, Users, VideoOff, Zap,
 } from 'lucide-react'
 
@@ -137,6 +138,53 @@ function EvidencePlayer({ frames }) {
   )
 }
 
+function CameraGrid({ cameras, running, paused, connected }) {
+  if (!running) {
+    return (
+      <div className="viewport">
+        <div className="placeholder">
+          <VideoOff size={26} />
+          {!connected
+            ? 'Backend no disponible'
+            : paused
+              ? 'En pausa. Las camaras estan liberadas y no se procesa nada.'
+              : 'Abriendo camaras y cargando el modelo de pose…'}
+        </div>
+      </div>
+    )
+  }
+
+  const list = cameras.length ? cameras : [{ id: null, label: 'camara', fps: 0, people: 0 }]
+
+  return (
+    <div className={`grid-cams n${Math.min(list.length, 4)}`}>
+      {list.map((cam) => (
+        <div className="viewport" key={cam.id || 'default'}>
+          {cam.error ? (
+            <div className="placeholder">
+              <VideoOff size={22} />
+              {cam.label}: {cam.error}
+            </div>
+          ) : (
+            <img
+              src={`/video.mjpg${cam.id ? `?camera=${encodeURIComponent(cam.id)}` : ''}`}
+              alt={cam.label}
+            />
+          )}
+          <span className="badge-live">
+            <span className="dot live" /> {cam.label}
+          </span>
+          {list.length > 1 && (
+            <span className="badge-stats">
+              {cam.fps} FPS · {cam.people} pers.
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Uploader({ jobs }) {
   const input = useRef(null)
   const [busy, setBusy] = useState(false)
@@ -201,6 +249,95 @@ function Uploader({ jobs }) {
   )
 }
 
+function Timeline({ moments }) {
+  const [open, setOpen] = useState(false)
+  if (!moments?.length) return null
+
+  return (
+    <div className="timeline">
+      <button className="section-toggle" onClick={() => setOpen((v) => !v)}>
+        <Clock3 size={12} />
+        Cronologia
+        <span className="hint">{open ? 'ocultar' : `${moments.length} momentos`}</span>
+      </button>
+      {open && (
+        <ol>
+          {moments.map((m, i) => (
+            <li key={i} className={m.trigger ? 'fire' : ''}>
+              <span className="tl-t">{m.t > 0 ? `+${m.t.toFixed(1)}` : m.t.toFixed(1)}s</span>
+              <span className="tl-note">{m.note}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
+}
+
+function Chat({ eventId }) {
+  const [open, setOpen] = useState(false)
+  const [history, setHistory] = useState([])
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const ask = async () => {
+    const question = text.trim()
+    if (!question || busy) return
+    setBusy(true)
+    setText('')
+    setHistory((h) => [...h, { question, answer: null }])
+    try {
+      const res = await fetch(`/api/events/${eventId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      })
+      const data = await res.json()
+      setHistory(data.history || [])
+    } catch {
+      setHistory((h) => h.map((t, i) =>
+        i === h.length - 1 ? { ...t, answer: 'No se pudo contactar con el backend.' } : t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="chat">
+      <button className="section-toggle" onClick={() => setOpen((v) => !v)}>
+        <MessageSquare size={12} />
+        Preguntar sobre este incidente
+        {history.length > 0 && <span className="hint">{history.length}</span>}
+      </button>
+
+      {open && (
+        <>
+          {history.map((turn, i) => (
+            <div key={i} className="turn">
+              <div className="q">{turn.question}</div>
+              <div className="a">
+                {turn.answer ?? <span className="spinner" />}
+              </div>
+            </div>
+          ))}
+          <div className="ask">
+            <input
+              value={text}
+              placeholder="¿Llevaba mochila? ¿Que hago ahora?"
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && ask()}
+              disabled={busy}
+            />
+            <button onClick={ask} disabled={busy || !text.trim()}>
+              <Send size={12} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function IncidentCard({ event, onFeedback }) {
   const verdict = event.verdict
   const when = new Date(event.created_at * 1000).toLocaleTimeString('es-ES')
@@ -215,7 +352,7 @@ function IncidentCard({ event, onFeedback }) {
               : verdict?.incident_type || 'Sin veredicto'}
           </div>
           <div className="card-sub">
-            {when} · persona #{event.track_id} · gate {event.gate_score.toFixed(2)}
+            {when} · {event.camera || 'cam1'} · persona #{event.track_id} · gate {event.gate_score.toFixed(2)}
             {event.latency_ms ? ` · ${(event.latency_ms / 1000).toFixed(1)}s` : ''}
             {event.source && event.source !== 'live' && (
               <div className="card-origin">
@@ -263,6 +400,9 @@ function IncidentCard({ event, onFeedback }) {
       )}
 
       <SignalChips signals={event.signals} />
+
+      <Timeline moments={event.timeline} />
+      {event.status !== 'analyzing' && <Chat eventId={event.id} />}
 
       {event.status !== 'analyzing' && (
         event.feedback ? (
@@ -368,6 +508,7 @@ export default function App() {
 
         <div className="metrics">
           <Metric label="fps" value={snapshot?.fps ?? '—'} />
+          <Metric label="camaras" value={snapshot?.cameras?.length ?? 1} />
           <Metric label="personas" value={snapshot?.people ?? 0} />
           <Metric label="disparos" value={stats.triggers ?? 0} />
           <Metric label="incidentes" value={incidents} tone="hot" />
@@ -388,25 +529,12 @@ export default function App() {
 
       <div className="main">
         <section className="stage">
-          <div className="viewport">
-            {running ? (
-              <>
-                <img src="/video.mjpg" alt="camara en vivo" />
-                <span className="badge-live">
-                  <span className="dot live" /> EN VIVO
-                </span>
-              </>
-            ) : (
-              <div className="placeholder">
-                <VideoOff size={26} />
-                {!connected
-                  ? 'Backend no disponible'
-                  : paused
-                    ? 'En pausa. La camara esta liberada y no se procesa nada.'
-                    : 'Iniciando camara y cargando el modelo de pose…'}
-              </div>
-            )}
-          </div>
+          <CameraGrid
+            cameras={snapshot?.cameras || []}
+            running={running}
+            paused={paused}
+            connected={connected}
+          />
 
           <div className="domains">
             {domains.map((d) => {

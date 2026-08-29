@@ -141,6 +141,58 @@ class VLMJudge:
         verdict = Verdict.model_validate_json(interaction.output_text)
         return verdict, frames, int((time.time() - started) * 1000)
 
+    def chat(self, event, domain: Domain, question: str,
+             history: list[dict] | None = None) -> str:
+        """Responde una pregunta del operador sobre un incidente ya analizado.
+
+        Se le vuelven a dar los mismos frames, mas el veredicto y la cronologia
+        medida, para que pueda mirar de nuevo en vez de fiarse de su resumen.
+        """
+        if self.offline:
+            return ("Modo offline: configura GEMINI_API_KEY para poder preguntar "
+                    "sobre el incidente.")
+
+        frames = []
+        for name in (event.frames or []):
+            path = config.CLIPS_DIR / name
+            frame = cv2.imread(str(path))
+            if frame is not None:
+                frames.append(frame)
+        if not frames:
+            return "No quedan frames de evidencia de este incidente."
+
+        v = event.verdict
+        cronologia = "\n".join(
+            f"  t{m['t']:+.1f}s  {m['note']}" for m in (event.timeline or [])
+        ) or "  (sin cronologia)"
+
+        context = f"""Eres un analista de seguridad respondiendo a un operador sobre un
+incidente concreto. Tienes los mismos fotogramas que se analizaron.
+
+Dominio: {domain.label}
+Veredicto previo: {'INCIDENTE' if v and v.incident else 'descartado'}"""
+        if v:
+            context += (f" — {v.incident_type} (confianza {v.confidence:.0%})\n"
+                        f"Evidencia registrada: {v.evidence}")
+        context += f"""
+
+Cronologia medida por el filtro geometrico:
+{cronologia}
+
+Reglas: responde solo sobre lo observable en los fotogramas. Si algo no se ve,
+dilo claramente en vez de suponerlo. Nunca describas ni infieras raza, genero,
+edad ni vestimenta como indicio. Se breve y concreto. Responde en espanol."""
+
+        parts = [{"type": "text", "text": context}]
+        parts += [_to_part(f) for f in frames]
+        for turn in (history or [])[-4:]:
+            parts.append({"type": "text",
+                          "text": f"Operador: {turn['question']}\nAnalista: {turn['answer']}"})
+        parts.append({"type": "text", "text": f"Operador pregunta: {question}"})
+
+        interaction = self.client.interactions.create(model=self.model, input=parts)
+        return (interaction.output_text or "").strip() or "Sin respuesta del modelo."
+
     @staticmethod
     def _mock(domain: Domain, signals: dict[str, float]) -> Verdict:
         """Sin API key el pipeline sigue siendo demostrable de punta a punta."""

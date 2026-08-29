@@ -95,6 +95,12 @@ def get_state():
     return pipe().snapshot()
 
 
+@app.get("/api/cameras")
+def get_cameras():
+    p = pipe()
+    return {"cameras": [f.snapshot() for f in p.feeds.values()]}
+
+
 @app.get("/api/domains")
 def get_domains():
     p = pipe()
@@ -197,15 +203,53 @@ def post_feedback(event_id: str, body: Feedback):
     return event.model_dump()
 
 
+class Question(BaseModel):
+    question: str
+
+
+CHATS: dict[str, list[dict]] = {}
+
+
+@app.post("/api/events/{event_id}/chat")
+def chat(event_id: str, body: Question):
+    """Pregunta libre del operador sobre un incidente ya analizado."""
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(400, "la pregunta esta vacia")
+    if len(question) > 500:
+        raise HTTPException(400, "pregunta demasiado larga")
+
+    p = pipe()
+    event = p.events.get(event_id)
+    if event is None:
+        raise HTTPException(404, "evento no encontrado")
+
+    domain = p.domains.get(event.domain, p.domain)
+    history = CHATS.setdefault(event_id, [])
+    try:
+        answer = p.judge.chat(event, domain, question, history)
+    except Exception as exc:                               # noqa: BLE001
+        raise HTTPException(502, f"fallo el modelo: {exc}") from exc
+
+    history.append({"question": question, "answer": answer})
+    del history[:-8]
+    return {"answer": answer, "history": history}
+
+
+@app.get("/api/events/{event_id}/chat")
+def get_chat(event_id: str):
+    return {"history": CHATS.get(event_id, [])}
+
+
 @app.get("/video.mjpg")
-def video():
+def video(camera: str | None = None):
     p = pipe()
 
     def frames():
         import time
         while True:
-            p.viewer_ping()
-            payload = p.preview()
+            p.viewer_ping(camera)
+            payload = p.preview(camera)
             if payload is None:
                 time.sleep(0.05)
                 continue

@@ -13,11 +13,13 @@ import uuid
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from .. import config
 from .buffer import RingBuffer
 from .events import EventStore, write_frames
 from .gate import Domain, Gate
+from . import timeline as timeline_mod
 from .signals import TrackHistory
 from .tracker import PoseTracker
 from .vlm import VLMJudge
@@ -164,7 +166,9 @@ class Analyzer:
                 if fire and len(pending) < MAX_VLM_CALLS:
                     job.triggers += 1
                     pending.append((hist.id, dict(values), score, t, ratio,
-                                    [(s.t, list(s.bbox)) for s in hist.samples]))
+                                    [(s.t, np.array(s.bbox, copy=True),
+                                      np.array(s.kp, copy=True))
+                                     for s in hist.samples]))
 
             for tid in [k for k, h in histories.items() if t - h.last_seen > 2.0]:
                 histories.pop(tid, None)
@@ -197,6 +201,9 @@ class Analyzer:
                 event.latency_ms = latency
                 event.status = "incident" if verdict.incident else "dismissed"
                 event.frames = write_frames(frames, event.id)
+                event.timeline = timeline_mod.build(
+                    samples, domain, t,
+                    t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS)
                 job.incidents += int(verdict.incident)
             except Exception as exc:                      # noqa: BLE001
                 event.status = "error"
@@ -214,7 +221,7 @@ def _bbox_at(samples: list[tuple], ts: float, ratio: float):
     """
     if not samples:
         return None
-    st, bbox = min(samples, key=lambda s: abs(s[0] - ts))
+    st, bbox, _kp = min(samples, key=lambda s: abs(s[0] - ts))
     if abs(st - ts) > 1.5:
         return None
     return [v * ratio for v in bbox]

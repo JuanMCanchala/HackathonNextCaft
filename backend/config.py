@@ -14,6 +14,8 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "").strip()
+# Base publica para que quien reciba el webhook pueda bajar la evidencia.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip()
 
 SOURCE = os.getenv("SENTINEL_SOURCE", "0").strip()
 DOMAIN = os.getenv("SENTINEL_DOMAIN", "retail_theft").strip()
