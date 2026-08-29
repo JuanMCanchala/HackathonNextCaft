@@ -66,15 +66,18 @@ def build(frames, track_id: int = 1):
     return frames
 
 
-def simulate(domain: Domain, primary: list, secondary: list | None = None):
+def simulate(domain: Domain, primary: list, secondary=None):
     """Reproduce la escena frame a frame contra el Gate, como el pipeline real.
 
     Devuelve (disparo, score_maximo, senales_en_el_pico).
     """
     gate = Gate(domain)
     hist = TrackHistory(1)
-    other = TrackHistory(2) if secondary else None
-    tracks = {1: hist} | ({2: other} if other else {})
+    # `secondary` admite una lista de frames o varias, para escenas con grupo.
+    extras = secondary if isinstance(secondary, dict) else (
+        {2: secondary} if secondary else {})
+    others = {k: TrackHistory(k) for k in extras}
+    tracks = {1: hist} | others
 
     fired = False
     best_score = 0.0
@@ -83,8 +86,9 @@ def simulate(domain: Domain, primary: list, secondary: list | None = None):
     for i, (bbox, kp) in enumerate(primary):
         t = i / FPS
         hist.push(t, bbox, kp)
-        if other is not None and i < len(secondary):
-            other.push(t, *secondary[i])
+        for k, frames in extras.items():
+            if i < len(frames):
+                others[k].push(t, *frames[i])
 
         ctx = {"now": t, "tracks": tracks,
                "frame_shape": (720, 1280, 3), "zones": domain.zones}
@@ -213,6 +217,25 @@ def scene_talking():
     return build(a, track_id=1), build(b, track_id=2)
 
 
+def scene_crowd(peleando: bool):
+    """Cuatro personas en cuadro; dos de ellas pelean o no.
+
+    Es el caso que hundio el recall sobre CCTV de calle: con gente alrededor,
+    el movimiento absoluto esta alto para todos y deja de distinguir. Devuelve
+    las cuatro tracks para poder evaluar el sujeto contra su escena.
+    """
+    tracks = {i: [] for i in range(1, 5)}
+    n = int(4 * FPS)
+    for i in range(n):
+        for k, base in ((3, 300), (4, 380)):          # dos que solo caminan
+            tracks[k].append(pose(base + i * 0.7, 400))
+        amp = 0.42 if peleando else 0.02
+        j = np.sin(i * 0.45) * amp * S
+        tracks[1].append(pose(610 + j, 400 + j * 0.25))
+        tracks[2].append(pose(670 - j, 400 - j * 0.25))
+    return tracks
+
+
 def scene_greeting():
     """Dos personas cerca, saludandose despacio. No es agresion."""
     a, b = [], []
@@ -233,6 +256,8 @@ def main() -> int:
     fight_a, fight_b = scene_fight()
     greet_a, greet_b = scene_greeting()
     talk_a, talk_b = scene_talking()
+    grupo_pelea = scene_crowd(True)
+    grupo_calma = scene_crowd(False)
 
     cases = [
         # (nombre, track principal, track secundaria, dominio, se espera disparo)
@@ -245,6 +270,8 @@ def main() -> int:
         ("pelea",               fight_a,              fight_b,  "violence",          True),
         ("saludo tranquilo",    greet_a,              greet_b,  "violence",          False),
         ("conversando/gestos",  talk_a,               talk_b,   "violence",          False),
+        ("pelea en multitud",   grupo_pelea[1],       {k: v for k, v in grupo_pelea.items() if k != 1}, "violence", True),
+        ("multitud tranquila",  grupo_calma[1],       {k: v for k, v in grupo_calma.items() if k != 1}, "violence", False),
     ]
 
     print(f"\n{'escenario':<22}{'dominio':<20}{'pico':>6}{'umbral':>8}  "

@@ -113,7 +113,7 @@ def _bbox_at(samples: list, ts: float, ratio: float):
 
 
 def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
-             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int, dict, int]:
+             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int, dict, int, float]:
     """Devuelve (disparo, confirmado, n disparos, pico de senales, max personas).
 
     El pico por senal es lo que permite diagnosticar un recall bajo sin
@@ -131,6 +131,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     pending: list[tuple] = []
     peaks: dict[str, float] = {}
     max_people = 0
+    best_score = 0.0
     index = 0
 
     while True:
@@ -158,7 +159,9 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
         for hist in list(histories.values()):
             if abs(hist.last_seen - t) > 1e-9:
                 continue
-            values, _score, fire = gate.evaluate(hist, ctx)
+            values, score, fire = gate.evaluate(hist, ctx)
+            if (hist.last_seen - hist.first_seen) >= gate.domain.min_track_seconds:
+                best_score = max(best_score, score)
             for name, val in values.items():
                 peaks[name] = max(peaks.get(name, 0.0), val)
             if fire and len(pending) < MAX_VLM_PER_CLIP:
@@ -175,7 +178,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     totals.triggers += len(pending)
 
     if not use_vlm or not pending:
-        return bool(pending), False, len(pending), peaks, max_people
+        return bool(pending), False, len(pending), peaks, max_people, best_score
 
     confirmed = False
     for values, t, ratio, samples in pending:
@@ -192,7 +195,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
             totals.vlm_errors += 1
             print(f"      aviso: fallo el VLM ({exc})", file=sys.stderr)
 
-    return True, confirmed, len(pending), peaks, max_people
+    return True, confirmed, len(pending), peaks, max_people, best_score
 
 
 def collect(folder: Path, limit: int) -> list[tuple[Path, bool]]:
@@ -293,6 +296,35 @@ def report(stage1: Counts, stage2: Counts, totals: Totals,
     print()
 
 
+def sweep(scores: list[tuple[float, bool]], actual: float) -> None:
+    """Recall y FPR a distintos umbrales, con los datos de esta misma pasada.
+
+    En una cascada la Etapa 1 no se tunea para equilibrio sino para recall: lo
+    que se le escapa aqui no lo recupera nadie, mientras que un falso positivo
+    de mas solo cuesta una llamada al VLM. Esta tabla dice cuanto recall se
+    compra por cada punto de falsos positivos.
+    """
+    if not scores:
+        return
+    print()
+    print("=" * 66)
+    print("  BARRIDO DE UMBRAL  ·  donde conviene poner el corte")
+    print("=" * 66)
+    print(f"  {'umbral':>8}{'recall':>10}{'FPR':>9}{'FNR':>9}{'precision':>12}"
+          f"{'llamadas VLM':>14}")
+    n_pos = sum(1 for _s, e in scores if e)
+    n_neg = len(scores) - n_pos
+    for th in [round(x * 0.05, 2) for x in range(4, 17)]:
+        tp = sum(1 for sc, e in scores if e and sc >= th)
+        fp = sum(1 for sc, e in scores if not e and sc >= th)
+        rec = tp / n_pos if n_pos else 0.0
+        fpr = fp / n_neg if n_neg else 0.0
+        prec = tp / (tp + fp) if (tp + fp) else 0.0
+        marca = "  <- actual" if abs(th - actual) < 0.026 else ""
+        print(f"  {th:>8.2f}{rec:>10.1%}{fpr:>9.1%}{1-rec:>9.1%}{prec:>12.1%}"
+              f"{tp + fp:>14}{marca}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("folder", type=Path)
@@ -329,6 +361,7 @@ def main() -> int:
                           conf=args.conf, imgsz=args.imgsz)
 
     stage1, stage2, totals = Counts(), Counts(), Totals()
+    scores: list[tuple[float, bool]] = []
     peaks_pos: list[dict] = []
     peaks_neg: list[dict] = []
     people_pos: list[int] = []
@@ -343,12 +376,13 @@ def main() -> int:
     for i, (path, expected) in enumerate(clips, start=1):
         gate = Gate(domains[args.domain])
         try:
-            fired, confirmed, n, peaks, people = run_clip(
+            fired, confirmed, n, peaks, people, score = run_clip(
                 path, tracker, gate, judge, use_vlm, totals)
         except Exception as exc:                          # noqa: BLE001
             print(f"  [{i}/{len(clips)}] {path.name}: ERROR {exc}", file=sys.stderr)
             continue
 
+        scores.append((score, expected))
         (peaks_pos if expected else peaks_neg).append(peaks)
         (people_pos if expected else people_neg).append(people)
 
@@ -363,6 +397,7 @@ def main() -> int:
 
     report(stage1, stage2, totals, use_vlm, len(clips), time.time() - wall)
     diagnose(peaks_pos, peaks_neg, people_pos, people_neg)
+    sweep(scores, domains[args.domain].threshold)
 
     if args.out:
         args.out.write_text(json.dumps({

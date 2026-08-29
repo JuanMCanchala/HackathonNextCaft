@@ -258,15 +258,36 @@ def sig_concealment(hist: TrackHistory, ctx: dict) -> float:
 def sig_motion(hist: TrackHistory, ctx: dict) -> float:
     """Energia de movimiento: forcejeos, golpes, carreras.
 
-    Exige que se muevan las DOS cosas, tronco y extremidades, y se queda con la
-    mas debil. Gesticular al hablar mueve mucho las manos y nada el tronco, y
-    antes eso puntuaba igual que una pelea: con camara real, dos personas
-    conversando disparaban el dominio de violencia cada 15 segundos.
+    Dos correcciones, ambas nacidas de medir:
+
+    1. Exige que se muevan tronco Y extremidades, y se queda con la mas debil.
+       Gesticular al hablar mueve mucho las manos y nada el tronco, y antes eso
+       puntuaba igual que una pelea.
+    2. Si hay corrillo, se compara contra el resto de la escena. Medido sobre
+       358 clips de CCTV de calle, el movimiento absoluto apenas separaba (0.98
+       con incidente contra 0.74 sin el): en una calle con gente TODO el mundo
+       se mueve. Una pelea no es moverse mucho, es moverse mucho MAS que los
+       demas.
     """
     window = hist.since(1.0)
-    core = _clamp(hist.speed(window, CORE_KP) / 1.6)
-    limbs = _clamp(hist.speed(window, LIMB_KP) / 3.2)
-    return min(core, limbs)
+    core_raw = hist.speed(window, CORE_KP)
+    absoluto = min(_clamp(core_raw / 1.6), _clamp(hist.speed(window, LIMB_KP) / 3.2))
+
+    vecinos = [h for h in ctx.get("tracks", {}).values()
+               if h.id != hist.id and ctx["now"] - h.last_seen <= 0.5
+               and len(h.samples) >= 4]
+    # Con una sola persona al lado no hay "resto de la escena" contra el que
+    # comparar, y una pelea entre dos en un sitio vacio debe medirse absoluta.
+    if len(vecinos) < 2:
+        return absoluto
+
+    ritmos = sorted(h.speed(h.since(1.0), CORE_KP) for h in vecinos)
+    tipico = ritmos[len(ritmos) // 2]
+    if tipico < 0.15:
+        return absoluto
+
+    relativo = _clamp((core_raw / tipico - 1.0) / 1.5)
+    return min(absoluto, relativo)
 
 
 def sig_proximity(hist: TrackHistory, ctx: dict) -> float:
