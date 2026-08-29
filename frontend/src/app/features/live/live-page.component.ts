@@ -33,6 +33,9 @@ import {
  * la demo un `setInterval` es una pieza menos que puede fallar delante de un
  * jurado, y a esta cadencia la diferencia no se percibe.
  */
+/** Cuantas detecciones se conservan a la vista antes de ir rotando. */
+const MAX_EVENTOS = 50;
+
 @Component({
   selector: 'app-live-page',
   standalone: true,
@@ -267,7 +270,7 @@ import {
             Todavía no ha disparado nada.
           </p>
         } @else {
-          <div class="space-y-3">
+          <div class="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
             @for (evento of eventos(); track evento.id) {
               <button
                 type="button"
@@ -552,7 +555,14 @@ export class LivePageComponent implements OnInit, OnDestroy {
       this.estado.set(estado);
     }
     if (eventos !== null) {
-      this.eventos.set(eventos.events.slice(0, 6));
+      // Se guardan 50, no 6.
+      //
+      // Con seis, un clip que dispara cuatro veces borraba de la vista lo
+      // anterior en el siguiente analisis: se perdia justamente la comparacion
+      // entre lo que el filtro dejo pasar y lo que el verificador descarto,
+      // que es lo que explica la cascada. El motor mantiene 200 en memoria,
+      // asi que aqui no hay nada que optimizar.
+      this.eventos.set(eventos.events.slice(0, MAX_EVENTOS));
     }
     if (trabajos !== null) {
       const job = trabajos.jobs[0] ?? null;

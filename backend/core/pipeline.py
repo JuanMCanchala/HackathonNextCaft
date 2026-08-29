@@ -375,10 +375,12 @@ class Pipeline:
             # El clip del panel abarca TODO el buffer, no la ventana corta que
             # se le manda al VLM: en el correo interesa el instante critico y
             # al abrir el incidente interesa el contexto de antes y despues.
+            ventana = feed.buffer.window(
+                t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)
             event.clip = write_clip(
-                [feed.buffer.decode(payload) for _, payload in feed.buffer.window(
-                    t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)],
-                event.id, fps=config.CLIP_FPS)
+                [feed.buffer.decode(payload) for _, payload in ventana],
+                event.id,
+                span=(ventana[-1][0] - ventana[0][0]) if len(ventana) > 1 else None)
             event.timeline = timeline_mod.build(
                 samples, domain, t,
                 t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS)

@@ -31,7 +31,8 @@ def write_frames(frames: list[np.ndarray], event_id: str) -> list[str]:
     return names
 
 
-def write_clip(frames: list[np.ndarray], event_id: str, fps: float = 8.0) -> str | None:
+def write_clip(frames: list[np.ndarray], event_id: str,
+               fps: float | None = None, span: float | None = None) -> str | None:
     """Escribe el clip completo como mp4 reproducible en un navegador.
 
     Esto es lo que ve el operador cuando abre el incidente; la tira de JPEG de
@@ -50,6 +51,16 @@ def write_clip(frames: list[np.ndarray], event_id: str, fps: float = 8.0) -> str
     """
     if len(frames) < 2:
         return None
+
+    # El ritmo se deriva del tiempo real que cubren los frames, no de una
+    # constante. Con un valor fijo el clip salia a camara lenta: el buffer
+    # guarda 12 segundos y, escritos a 8 fps, un tramo capturado a 20 fps se
+    # estiraba a treinta. Un incidente de doce segundos que se reproduce en
+    # treinta desinforma a quien lo mira para decidir si acude.
+    if span is not None and span > 0.1:
+        fps = max(4.0, min(30.0, (len(frames) - 1) / span))
+    elif fps is None:
+        fps = 8.0
 
     exe = _ffmpeg_exe()
     if exe is None:

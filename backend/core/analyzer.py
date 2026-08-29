@@ -208,10 +208,12 @@ class Analyzer:
                 # este es el camino que recorre la demo: enseñar una pelea
                 # guardada pasa por `analyze_file`, no por la camara, y sin
                 # esto el panel se quedaba solo con el fotograma.
+                ventana = buffer.window(
+                    t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)
                 event.clip = write_clip(
-                    [buffer.decode(payload) for _, payload in buffer.window(
-                        t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)],
-                    event.id, fps=config.CLIP_FPS)
+                    [buffer.decode(payload) for _, payload in ventana],
+                    event.id,
+                    span=(ventana[-1][0] - ventana[0][0]) if len(ventana) > 1 else None)
                 event.timeline = timeline_mod.build(
                     samples, domain, t,
                     t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS)

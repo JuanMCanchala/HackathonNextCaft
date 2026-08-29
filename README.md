@@ -228,3 +228,29 @@ El contrato completo, con los gotchas, esta en [API.md](API.md).
 | POST | `/api/pause` · `/api/resume` | Suelta o reabre las camaras |
 | GET | `/video.mjpg?camera={id}` | Video anotado en vivo |
 | WS | `/ws` | Estado cada 500 ms, eventos y progreso al vuelo |
+
+## Instalación rápida
+
+Deja el motor de visión funcionando en una máquina nueva: entorno de Python,
+dependencias, el modelo de pose y la configuración mínima.
+
+```powershell
+# Windows
+.\instalar.ps1
+```
+
+```bash
+# Linux / macOS
+./instalar.sh
+```
+
+Al terminar arranca el motor en `http://localhost:8000` y te da el enlace del
+panel. El panel se conecta solo a tu máquina: abre **En vivo** para ver la
+cámara y prueba con un clip de `prueba/`.
+
+Opciones: `-SoloModelo` / `--solo-modelo` baja solo el modelo YOLO;
+`-NoArrancar` / `--no-arrancar` instala sin levantar nada.
+
+Sin `GEMINI_API_KEY` en el `.env` el motor arranca igual: el filtro geométrico
+funciona y las detecciones quedan sin verificar, que basta para ver el sistema
+moverse. La clave se saca en [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
