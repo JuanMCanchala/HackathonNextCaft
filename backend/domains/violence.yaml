@@ -13,9 +13,13 @@ weights:
   motion: 0.55
   proximity: 0.45
 
-require:
-  motion: 0.42
-  proximity: 0.38
+# Sin `require`. Medido sobre 358 clips de CCTV real: exigir motion >= 0.42 Y
+# proximity >= 0.38 silenciaba 20 de 112 agresiones por completo, no las
+# puntuaba bajo. Eso clavaba el techo de recall en 79.5% hiciera lo que
+# hiciera el umbral. Sin la puerta AND el techo sube a ~97%.
+#
+# Un falso positivo de mas solo cuesta una llamada al VLM, que descarta;
+# un falso negativo aqui no lo recupera nadie.
 
 vlm:
   taxonomy:
