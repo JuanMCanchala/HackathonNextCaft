@@ -22,11 +22,14 @@ FPS = 25.0
 S = 60.0  # largo de torso en pixeles
 
 
-def pose(cx: float, cy: float, wrists=None, angle: float = 0.0, s: float = S):
+def pose(cx: float, cy: float, wrists=None, angle: float = 0.0,
+         yaw: float = 0.0, s: float = S):
     """Persona de pie en (cx, cy). cy es la altura de la cadera.
 
     `angle` en radianes rota el cuerpo alrededor de la cadera: 0 = de pie,
     pi/2 = tumbado. `wrists` sobrescribe la posicion de las munecas.
+    `yaw` en [-1, 1] gira la cabeza: desplaza nariz y orejas como lo haria
+    un giro real, para poder probar la senal de barrido visual.
     """
     base = {
         0: (0.0, -1.62), 1: (-0.09, -1.70), 2: (0.09, -1.70),
@@ -38,6 +41,13 @@ def pose(cx: float, cy: float, wrists=None, angle: float = 0.0, s: float = S):
         13: (-0.30, 0.95), 14: (0.30, 0.95),
         15: (-0.30, 1.90), 16: (0.30, 1.90),
     }
+    if yaw:
+        # La nariz se desplaza mas que las orejas al girar la cabeza.
+        base[0] = (base[0][0] + yaw * 0.13, base[0][1])
+        base[1] = (base[1][0] + yaw * 0.11, base[1][1])
+        base[2] = (base[2][0] + yaw * 0.11, base[2][1])
+        base[3] = (base[3][0] + yaw * 0.05, base[3][1])
+        base[4] = (base[4][0] + yaw * 0.05, base[4][1])
     if wrists:
         base[9], base[10] = wrists
     kp = np.zeros((17, 3), dtype=np.float32)
@@ -125,6 +135,26 @@ def scene_concealment():
     return build(frames)
 
 
+def scene_scan_and_conceal():
+    """Mira a un lado y a otro, y despues oculta el producto.
+
+    Es el patron documentado del robo: comprobar si alguien mira ANTES de
+    ocultar. Debe puntuar mas alto que ocultar sin mas.
+    """
+    frames = []
+    total = int(5 * FPS)
+    for i in range(total):
+        p = i / total
+        yaw = np.sin(i * 0.55) * 0.95 if p < 0.5 else 0.15
+        if p < 0.45:
+            reach = min(p / 0.45, 1.0) * 0.85
+            wr = ((-0.62, 0.10), (0.62 + reach, 0.10 - reach))
+        else:
+            wr = ((-0.62, 0.10), (0.12, 0.02))
+        frames.append(pose(640, 400, wrists=wr, yaw=yaw))
+    return build(frames)
+
+
 def scene_fall():
     """De pie 2.5 s, cae en 0.5 s y queda inmovil en el suelo."""
     frames = []
@@ -209,6 +239,7 @@ def main() -> int:
         ("quieto de pie",       scene_idle(),         None,     "retail_theft",      False),
         ("mirando un producto", scene_browsing(),     None,     "retail_theft",      False),
         ("oculta el producto",  scene_concealment(),  None,     "retail_theft",      True),
+        ("mira y luego oculta", scene_scan_and_conceal(), None, "retail_theft",      True),
         ("caida e inmovil",     scene_fall(),         None,     "fall_detection",    True),
         ("se agacha despacio",  scene_sitting_down(), None,     "fall_detection",    False),
         ("pelea",               fight_a,              fight_b,  "violence",          True),

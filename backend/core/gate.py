@@ -26,6 +26,10 @@ class Domain:
     min_track_seconds: float = 1.5
     weights: dict[str, float] = field(default_factory=dict)
     require: dict[str, float] = field(default_factory=dict)
+    # Senales que se calculan y viajan al VLM y al diagnostico, pero NO
+    # puntuan. Es el sitio donde vive una senal candidata mientras se mide
+    # si de verdad separa, antes de dejarla tocar el score.
+    report: list[str] = field(default_factory=list)
     taxonomy: list[str] = field(default_factory=list)
     focus: str = ""
     zones: list[list[list[float]]] = field(default_factory=list)
@@ -96,7 +100,8 @@ class Gate:
 
     def evaluate(self, hist: TrackHistory, ctx: dict) -> tuple[dict[str, float], float, bool]:
         """Devuelve (senales, score, disparar)."""
-        needed = set(self.domain.weights) | set(self.domain.require)
+        needed = (set(self.domain.weights) | set(self.domain.require)
+                  | set(self.domain.report))
         values = {name: SIGNALS[name](hist, ctx) for name in needed if name in SIGNALS}
         score = self.domain.score(values)
 

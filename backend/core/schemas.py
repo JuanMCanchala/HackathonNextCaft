@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 # Indices de keypoints COCO-17 que usa YOLO-pose.
 NOSE = 0
+L_EYE, R_EYE = 1, 2
+L_EAR, R_EAR = 3, 4
 L_SHOULDER, R_SHOULDER = 5, 6
 L_ELBOW, R_ELBOW = 7, 8
 L_WRIST, R_WRIST = 9, 10

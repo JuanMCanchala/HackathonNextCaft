@@ -10,8 +10,8 @@ from collections import deque
 import numpy as np
 
 from .schemas import (
-    L_ANKLE, L_ELBOW, L_HIP, L_KNEE, L_SHOULDER, L_WRIST,
-    R_ANKLE, R_ELBOW, R_HIP, R_KNEE, R_SHOULDER, R_WRIST,
+    L_ANKLE, L_EAR, L_ELBOW, L_HIP, L_KNEE, L_SHOULDER, L_WRIST, NOSE,
+    R_ANKLE, R_EAR, R_ELBOW, R_HIP, R_KNEE, R_SHOULDER, R_WRIST,
 )
 
 KP_CONF = 0.3
@@ -117,6 +117,33 @@ class Sample:
             if float(np.linalg.norm(w - self.sh_mid)) > self.scale * 1.05:
                 return True
         return False
+
+    @property
+    def head_yaw(self) -> float | None:
+        """Hacia donde mira la cabeza: -1 a un lado, 0 de frente, +1 al otro.
+
+        Es geometria de pose, NO biometria: se compara la distancia de la nariz
+        a cada oreja. No identifica a nadie ni genera ninguna huella facial, del
+        mismo modo que medir hacia donde apunta el torso no identifica a nadie.
+        Devuelve None si no se ven suficientes puntos de la cara.
+        """
+        nose = _pt(self.kp, NOSE)
+        if nose is None:
+            return None
+        left, right = _pt(self.kp, L_EAR), _pt(self.kp, R_EAR)
+        if left is not None and right is not None:
+            dl = float(np.linalg.norm(nose - left))
+            dr = float(np.linalg.norm(nose - right))
+            total = dl + dr
+            if total < 1e-3:
+                return None
+            return float(max(-1.0, min(1.0, (dl - dr) / total)))
+        # Con una sola oreja visible la cabeza esta claramente girada.
+        if left is not None:
+            return 1.0
+        if right is not None:
+            return -1.0
+        return None
 
     def foot_point(self) -> np.ndarray:
         m = _mid(_pt(self.kp, L_ANKLE), _pt(self.kp, R_ANKLE))
@@ -291,6 +318,37 @@ def sig_immobility(hist: TrackHistory, ctx: dict) -> float:
     return still * span
 
 
+def sig_scanning(hist: TrackHistory, ctx: dict) -> float:
+    """Barrido de la cabeza: mirar a un lado y a otro repetidamente.
+
+    En robo, el indicio documentado no es ocultar por si solo, sino comprobar
+    si alguien mira JUSTO ANTES de ocultar. Por si sola esta senal es debil, un
+    cliente tambien mira alrededor buscando productos; su valor esta en sumarse
+    a `concealment`, no en disparar sola.
+    """
+    window = hist.since(3.0)
+    yaws = [s.head_yaw for s in window]
+    yaws = [y for y in yaws if y is not None]
+    if len(yaws) < 5:
+        return 0.0
+
+    barrido = _clamp((max(yaws) - min(yaws)) / 1.1)
+
+    # Cambios de sentido: mirar a un lado y volver, no un giro unico.
+    vueltas = 0
+    ultimo = 0
+    for a, b in zip(yaws, yaws[1:]):
+        paso = b - a
+        if abs(paso) < 0.08:
+            continue
+        signo = 1 if paso > 0 else -1
+        if ultimo and signo != ultimo:
+            vueltas += 1
+        ultimo = signo
+
+    return _clamp(0.6 * barrido + 0.4 * _clamp(vueltas / 3.0))
+
+
 def sig_dwell(hist: TrackHistory, ctx: dict) -> float:
     """Permanencia prolongada en el mismo punto."""
     window = hist.since(HISTORY_SECONDS)
@@ -342,6 +400,7 @@ SIGNALS = {
     "proximity": sig_proximity,
     "fall": sig_fall,
     "immobility": sig_immobility,
+    "scanning": sig_scanning,
     "dwell": sig_dwell,
     "zone": sig_zone,
     "presence": sig_presence,

@@ -60,9 +60,18 @@ explicacion en lenguaje natural que un operador puede leer y auditar; la 3
 cierra el bucle con la persona que decide.
 
 **Sesgo.** El sistema no usa biometria ni reconocimiento facial. La Etapa 1 solo
-mide geometria corporal, y al VLM se le prohibe explicitamente razonar sobre
-raza, genero, edad o vestimenta. Cada alerta guarda su evidencia textual, asi
-que es auditable a posteriori.
+mide geometria corporal, y al VLM se le prohibe escribir una sola palabra sobre
+raza, etnia, genero, edad, complexion o estilo de vestir, incluso si se lo
+preguntan directamente en el chat. La unica excepcion es el equipo de proteccion
+en el dominio industrial, porque comprobar si alguien lleva casco *es* el
+trabajo. Cada alerta guarda su evidencia textual, asi que es auditable despues.
+
+Sobre los keypoints de la cara: se usan nariz y orejas para estimar hacia donde
+apunta la cabeza, igual que se usan hombros y caderas para saber hacia donde
+apunta el torso. Es **geometria de pose, no biometria**: no se genera ninguna
+huella facial, no se identifica a nadie y no se compara a una persona con otra
+ni consigo misma en otro momento. Las tracks son numeros que se olvidan a los
+2 segundos de que la persona sale de cuadro.
 
 ---
 

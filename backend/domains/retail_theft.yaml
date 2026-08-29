@@ -18,6 +18,12 @@ weights:
 require:
   concealment: 0.34
 
+# Candidata en evaluacion: se mide pero todavia no puntua. El barrido visual
+# separa muy bien en simulacion, pero un cliente que busca un producto
+# tambien mira alrededor; hasta tener datos reales no toca el score.
+report:
+  - scanning
+
 vlm:
   taxonomy:
     - ocultamiento de producto
