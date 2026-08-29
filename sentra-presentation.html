@@ -79,17 +79,41 @@ h1, h2, h3 {
 .brand {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 600;
-  font-size: clamp(72px, 14vw, 168px);
+  font-size: clamp(56px, 9.5vw, 112px);
   line-height: .88;
   letter-spacing: -.06em;
-  margin: 0 0 20px;
+  margin: 0 0 28px;
   text-wrap: balance;
 }
+.hero-copy {
+  min-width: 0;
+  max-width: 34rem;
+}
+.hero-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  letter-spacing: -.055em;
+  margin: 0;
+  display: grid;
+  gap: .12em;
+}
+.hero-title .hero-line {
+  display: block;
+  font-size: clamp(28px, 3.6vw, 42px);
+  line-height: 1.05;
+  color: var(--mid);
+  text-wrap: balance;
+}
+.hero-title .hero-line--accent {
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 1;
+  color: var(--c);
+  max-width: none;
+}
 h1 {
-  font-size: clamp(36px, 5.5vw, 64px);
+  font-size: clamp(40px, 6vw, 72px);
   line-height: .98;
-  margin: 0 0 18px;
-  max-width: 14ch;
+  margin: 0 0 22px;
 }
 h2 {
   font-size: clamp(46px, 6.5vw, 82px);
@@ -98,16 +122,57 @@ h2 {
 }
 em { color: var(--c); font-style: normal }
 .lede {
-  max-width: 580px;
+  max-width: 34rem;
   color: var(--mid);
-  font-size: 18px;
-  line-height: 1.6;
+  font-size: clamp(17px, 1.35vw, 20px);
+  line-height: 1.55;
+  text-wrap: pretty;
 }
 .grid {
   display: grid;
-  grid-template-columns: 1.1fr .9fr;
-  gap: 70px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr);
+  gap: clamp(36px, 5vw, 72px);
   align-items: center;
+}
+.hero-metrics {
+  border-block: 1px solid var(--l);
+}
+.hero-stat {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, max-content) 1fr;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--l);
+}
+.hero-stat:last-of-type { border-bottom: 0 }
+.hero-stat strong {
+  color: var(--c);
+  font: 500 clamp(30px, 3.4vw, 48px)/1 'Space Grotesk', sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hero-stat p {
+  margin: 0;
+  font-size: 14px;
+}
+.hero-proof {
+  margin: 16px 0 0;
+  color: #77839f;
+  font: 10px/1.5 'JetBrains Mono', monospace;
+}
+.hero-proof em { color: var(--c) }
+.hero-proof a { color: #77839f }
+.sentra-card {
+  border: 1px solid var(--c) !important;
+  background: #22e0ff12;
+  padding-left: 27px !important;
+}
+.sentra-card > b {
+  display: inline-block;
+  padding: 5px 8px;
+  background: var(--c);
+  color: var(--bg);
 }
 
 /* Reveal system */
@@ -441,160 +506,257 @@ footer {
     transform: none;
   }
 }
+.stack-line {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 10px 0 30px;
+  padding: 14px 0;
+  border-block: 1px solid var(--l);
+  color: var(--mid);
+  font: 11px 'JetBrains Mono', monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.stack-line b { color: var(--c); font-size: 22px }
+.stack-line strong { color: var(--c); font-weight: 500 }
+.differential-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 54px;
+  border-bottom: 1px solid var(--l);
+}
+.differential-item {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 16px;
+  padding: 19px 0 22px;
+  border-top: 1px solid var(--l);
+}
+.differential-item > strong {
+  color: var(--c);
+  font: 16px 'JetBrains Mono', monospace;
+}
+.differential-item h3 {
+  margin: 0 0 7px;
+  font-size: clamp(22px, 2.1vw, 31px);
+  letter-spacing: -.04em;
+}
+.differential-item p {
+  margin: 0;
+  max-width: 390px;
+  color: var(--mid);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.slide#slide-4 .thesis {
+  max-width: 980px;
+  margin-top: 24px;
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.15;
+}
+@media (max-width: 760px) {
+  .stack-line { align-items: flex-start; flex-direction: column; gap: 7px }
+  .stack-line b { transform: rotate(90deg); margin-left: 4px }
+  .differential-grid { grid-template-columns: 1fr; gap: 0 }
+  .differential-item { grid-template-columns: 38px 1fr; gap: 10px; padding: 16px 0 }
+  .differential-item h3 { font-size: 23px }
+  .differential-item p { font-size: 14px }
+}
+.competitor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--l);
+}
+.competitor-card {
+  min-height: 224px;
+  padding: 28px 30px 25px;
+  border-right: 1px solid var(--l);
+}
+.competitor-card:last-child { border-right: 0 }
+.competitor-card > b {
+  display: block;
+  margin-bottom: 24px;
+  color: var(--low);
+  font: 11px 'JetBrains Mono', monospace;
+  letter-spacing: .14em;
+}
+.competitor-card h3 {
+  margin: 0 0 13px;
+  font-size: clamp(28px, 3vw, 48px);
+  line-height: .98;
+}
+.competitor-card p {
+  margin: 0 0 19px;
+  color: var(--c);
+  font: 11px 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+}
+.competitor-card span {
+  display: block;
+  max-width: 250px;
+  color: var(--mid);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.competitor-card.sentra-hero {
+  border-right: 0;
+  background: linear-gradient(135deg, #22e0ff1c, transparent 70%);
+  box-shadow: inset 0 0 0 1px #22e0ff66;
+}
+.competitor-card.sentra-hero > b,
+.competitor-card.sentra-hero h3 { color: var(--c) }
+.competitor-card.sentra-hero p { color: var(--hi) }
+@media (max-width: 760px) {
+  .competitor-grid { grid-template-columns: 1fr; }
+  .competitor-card { min-height: 0; padding: 20px 0; border-right: 0; border-bottom: 1px solid var(--l); }
+  .competitor-card:last-child { border-bottom: 0; }
+  .competitor-card > b { margin-bottom: 12px; }
+  .competitor-card h3 { font-size: 34px; }
+}
 </style>
 <body>
 <div class="slide-viewport">
   <div class="slide-track">
-    <section class="slide" id="slide-0" aria-label="Diapositiva 1 de 7">
+    <section class="slide" id="slide-0" aria-label="Diapositiva 1 de 6">
       <div class="wrap grid">
-        <div>
-          <p class="kicker reveal"><span aria-hidden="true">●</span> AI&nbsp;SECURITY OPERATIONS&nbsp;CENTER</p>
+        <div class="hero-copy">
+          <p class="kicker reveal"><span aria-hidden="true">●</span> 01 / EL PROBLEMA</p>
           <p class="brand reveal" translate="no">SENTRA</p>
-          <h1 class="reveal">De cámaras a<br><em>decisiones.</em></h1>
-          <p class="lede reveal">Sentra convierte detecciones de IA en incidentes operables, auditables y seguros para que los equipos actúen con contexto, no con ruido.</p>
+          <h1 class="hero-title reveal">
+            <span class="hero-line">La alerta llega.</span>
+            <span class="hero-line hero-line--accent">La respuesta tarda.</span>
+          </h1>
         </div>
-        <div class="radar reveal d3">
-          <span class="blip a" aria-hidden="true"></span>
-          <span class="blip b" aria-hidden="true"></span>
-          <span class="blip c" aria-hidden="true"></span>
-          <span><i class="live-dot" aria-hidden="true"></i>WORKSPACE / PLANTA NORTE · EN VIVO</span>
+        <div class="reveal d3">
+          <div class="hero-metrics">
+            <div class="hero-stat">
+              <strong data-count="3.42" data-decimals="2" data-suffix=" min">0</strong>
+              <p>tiempo promedio para resolver un incidente</p>
+            </div>
+            <div class="hero-stat">
+              <strong>US$28M</strong>
+              <p>de costo evitable revelado por el ahorro del caso</p>
+            </div>
+            <div class="hero-stat">
+              <strong>24/7</strong>
+              <p>las cámaras producen señales; el equipo humano es finito</p>
+            </div>
+          </div>
+          <p class="hero-proof">Cifras de referencia: caso Fortune 500 publicado por <a href="https://hivewatch.com/customer-story/fortune-500-gaming-company" target="_blank" rel="noopener">HiveWatch ↗</a></p>
         </div>
       </div>
     </section>
 
-    <section class="slide" id="slide-1" aria-label="Diapositiva 2 de 7">
+    <section class="slide" id="slide-1" aria-label="Diapositiva 2 de 6">
       <div class="wrap">
-        <small class="reveal">01 / EL PROBLEMA</small>
-        <h2 class="reveal">La cámara observa.<br>El operador interpreta.</h2>
-        <div class="cards">
+        <small class="reveal">02 / LA SOLUCIÓN · BENCHMARK EXTERNO</small>
+        <h2 class="reveal">Centralizar cambia<br><em>la ecuación.</em></h2>
+        <div class="numbers">
           <article class="reveal d2">
-            <b>01</b>
-            <h3>Señales sin contexto</h3>
-            <p>Las detecciones llegan como hechos técnicos. No son todavía una decisión operacional.</p>
+            <div class="number"><strong data-count="22" data-decimals="0" data-suffix=" s">0</strong></div>
+            <p>resolución con el flujo operativo centralizado</p>
           </article>
           <article class="reveal d3">
-            <b>02</b>
-            <h3>Ruido que escala</h3>
-            <p>Eventos similares se multiplican y la evidencia queda dispersa.</p>
+            <div class="number"><strong data-count="60" data-decimals="0" data-suffix="%">0</strong></div>
+            <p>menos falsos positivos en 5 meses</p>
           </article>
           <article class="reveal d4">
-            <b>03</b>
-            <h3>Automatizar de más</h3>
-            <p>Una confianza de modelo NO es una confirmación humana.</p>
+            <div class="number">US$<strong data-count="28" data-decimals="0" data-suffix="M">0</strong></div>
+            <p>de ahorro reportado en 3 años</p>
           </article>
         </div>
-        <p class="thesis reveal d5"><em>La brecha:</em> pasar de “posible evento” a una cola priorizada, explicable y con dueño.</p>
+        <p class="source reveal d5">Resultados de referencia, no métricas propias de Sentra. Fuente: <a href="https://hivewatch.com/customer-story/fortune-500-gaming-company" target="_blank" rel="noopener">HiveWatch ↗</a></p>
+        <p class="thesis reveal d5">Sentra aplica ese modelo en Latam: detecta caídas y altercados, agrupa, prioriza y avisa por llamada o correo.</p>
       </div>
     </section>
 
-    <section class="slide" id="slide-2" aria-label="Diapositiva 3 de 7">
-      <div class="wrap">
-        <small class="reveal">02 / LA RESPUESTA</small>
-        <h2 class="reveal">La capa <em>operativa</em><br>de la IA.</h2>
-        <div class="cards">
-          <article class="reveal d2">
-            <b>01</b>
-            <h3>Normaliza</h3>
-            <p>Fuente, versión, confianza, evidencia y trazabilidad bajo un contrato.</p>
-          </article>
-          <article class="reveal d3">
-            <b>02</b>
-            <h3>Agrupa</h3>
-            <p>Observaciones por cámara, categoría y ventana temporal.</p>
-          </article>
-          <article class="reveal d4">
-            <b>03</b>
-            <h3>Orquesta</h3>
-            <p>Estados, permisos, auditoría y actualizaciones en tiempo real.</p>
-          </article>
-        </div>
-        <p class="thesis reveal d5">● <em>PRINCIPIO:</em> la IA informa; una persona confirma y decide.</p>
-      </div>
-    </section>
-
-    <section class="slide" id="slide-3" aria-label="Diapositiva 4 de 7">
+    <section class="slide" id="slide-2" aria-label="Diapositiva 3 de 6">
       <div class="wrap">
         <small class="reveal">03 / DEMO EN VIVO</small>
         <h2 class="reveal">Se lo mostramos<br><em>en directo.</em></h2>
-        <div class="live-badge reveal d2" aria-live="polite">
+        <div class="live-badge reveal d2">
           <span class="pulse" aria-hidden="true"></span>
-          AHORA · CÁMARA REAL · SIN SLIDES
+          AHORA · DEMO EN VIVO · 60&nbsp;S
         </div>
-        <p class="lede reveal d3">Pasamos del pitch al producto: una detección en vivo, el incidente que se forma y la decisión del operador — en tiempo real.</p>
+        <p class="lede reveal d3">Del video a la respuesta: detección, incidente y decisión del operador — en tiempo real.</p>
         <div class="live-points">
           <article class="reveal d4">
             <b>01 · SEÑAL</b>
-            <p>La cámara detecta un evento frente a ustedes.</p>
+            <p>La cámara detecta una caída o un posible altercado frente a ustedes.</p>
           </article>
           <article class="reveal d5">
             <b>02 · INCIDENTE</b>
             <p>Sentra lo agrupa, prioriza y deja evidencia lista.</p>
           </article>
           <article class="reveal d6">
-            <b>03 · DECISIÓN</b>
-            <p>El operador clasifica, atiende y cierra el ciclo.</p>
+            <b>03 · RESPUESTA</b>
+            <p>El operador decide y el equipo queda notificado a tiempo.</p>
           </article>
         </div>
       </div>
     </section>
 
-    <section class="slide" id="slide-4" aria-label="Diapositiva 5 de 7">
+    <section class="slide" id="slide-3" aria-label="Diapositiva 4 de 6">
       <div class="wrap">
-        <small class="reveal">04 / CONFIANZA POR DISEÑO</small>
-        <h2 class="reveal">Hecho para operar<br>sin abrir brechas.</h2>
-        <div class="arch">
-          <div class="reveal d2">
-            <small>ENTRADAS</small>
-            <p>Modelos de IA</p>
-            <p>Cámaras & gateways</p>
-            <p>Integraciones</p>
-          </div>
-          <b class="reveal d3" aria-hidden="true">→</b>
-          <article class="reveal d4">
-            <h3>● SENTRA CORE</h3>
-            <p>Normalización · Idempotencia · Reglas · Auditoría</p>
-            <small>DATOS AISLADOS POR WORKSPACE</small>
-          </article>
-          <b class="reveal d5" aria-hidden="true">→</b>
-          <div class="reveal d6">
-            <small>SALIDAS</small>
-            <p>Cola de incidentes</p>
-            <p>Tiempo real</p>
-            <p>Webhooks & MCP</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="slide" id="slide-5" aria-label="Diapositiva 6 de 7">
-      <div class="wrap">
-        <small class="reveal">05 / OPORTUNIDAD</small>
-        <h2 class="reveal">El problema no es detectar.<br>Es <em>resolver a tiempo.</em></h2>
-        <div class="numbers">
+        <small class="reveal">04 / A DÓNDE APUNTAMOS</small>
+        <h2 class="reveal">Operaciones en Latam<br>con cámaras y equipos <em>limitados.</em></h2>
+        <div class="cards">
           <article class="reveal d2">
-            <div class="number"><strong data-count="3.42" data-decimals="2" data-suffix=" min">0</strong></div>
-            <p>tiempo promedio para resolver un incidente</p>
+            <b>01</b>
+            <h3>Industria &amp; logística</h3>
+            <p>Plantas, bodegas y centros de distribución con riesgo operativo.</p>
           </article>
           <article class="reveal d3">
-            <div class="number"><strong data-count="22" data-decimals="0" data-suffix=" s">0</strong></div>
-            <p>tiempo de resolución después de centralizar el flujo</p>
+            <b>02</b>
+            <h3>Retail &amp; espacios</h3>
+            <p>Tiendas, centros comerciales y campus con múltiples cámaras.</p>
           </article>
           <article class="reveal d4">
-            <div class="number"><strong data-count="60" data-decimals="0" data-suffix="%">0</strong></div>
-            <p>menos falsos positivos en cinco meses</p>
+            <b>03</b>
+            <h3>Seguridad privada</h3>
+            <p>Equipos que vigilan varios sitios y necesitan priorizar rápido.</p>
           </article>
         </div>
-        <p class="source reveal d5"><em>US$28M</em> de ahorro reportado en tres años al conectar video, control de acceso y otras fuentes en un mismo sistema operativo de seguridad.<br>Fuente: <a href="https://hivewatch.com/customer-story/fortune-500-gaming-company" target="_blank" rel="noopener">HiveWatch, caso de estudio de una compañía Fortune 500 de gaming ↗</a></p>
-        <p class="thesis reveal d5">Sentra convierte detecciones dispersas en incidentes priorizados, asignados y auditables.</p>
+        <p class="thesis reveal d5">Empezamos donde una alerta tardía cuesta más que la tecnología.</p>
       </div>
     </section>
 
-    <section class="slide final" id="cierre" aria-label="Diapositiva 7 de 7">
+    <section class="slide" id="slide-4" aria-label="Diapositiva 5 de 6">
       <div class="wrap">
-        <small class="reveal">06 / EL SIGUIENTE PASO</small>
-        <h2 class="reveal">Que cada señal tenga<br>un <em>responsable.</em></h2>
-        <p class="lede reveal">Sentra hace que la IA de cámaras sea útil donde importa: cuando un equipo necesita decidir, explicar y actuar.</p>
-        <p class="thesis reveal d4">MVP: detectar · agrupar · priorizar · resolver</p>
+        <small class="reveal">05 / COMPETENCIA &amp; DIFERENCIAL</small>
+        <h2 class="reveal">Ellos muestran y detectan.<br>Sentra hace que alguien <em>actúe.</em></h2>
+        <div class="competitor-grid">
+          <article class="competitor-card reveal d2">
+            <b>VMS</b>
+            <h3>Administra video</h3>
+            <p>Genetec · Milestone · Verkada</p>
+            <span>Cámaras, grabaciones y alarmas.</span>
+          </article>
+          <article class="competitor-card reveal d3">
+            <b>ANALÍTICA</b>
+            <h3>Detecta señales</h3>
+            <p>BriefCam · modelos de IA</p>
+            <span>Encuentra personas, vehículos y eventos.</span>
+          </article>
+          <article class="competitor-card sentra-hero reveal d4">
+            <b>SENTRA</b>
+            <h3>Orquesta respuestas</h3>
+            <p>La capa de decisión</p>
+            <span>Agrupa, prioriza, asigna, notifica y audita.</span>
+          </article>
+        </div>
+        <p class="thesis reveal d5"><em>De la señal aislada a una respuesta verificable.</em></p>
+        <p class="source reveal d6">Capacidades verificadas: <a href="https://www.genetec.com/products/unified-security/security-center" target="_blank" rel="noopener">Genetec</a> · <a href="https://www.milestonesys.com/products/expand-your-solution/milestone-extensions/incident-manager/" target="_blank" rel="noopener">Milestone</a> · <a href="https://www.briefcam.com/resources/videos/what-is-video-analytics" target="_blank" rel="noopener">BriefCam</a></p>
+      </div>
+    </section>
+
+    <section class="slide final" id="cierre" aria-label="Diapositiva 6 de 6">
+      <div class="wrap">
+        <small class="reveal">06 / CIERRE</small>
+        <h2 class="reveal">Cada señal,<br>una <em>respuesta a tiempo.</em></h2>
+        <p class="lede reveal">Sus cámaras ya ven. Sentra las vuelve operación: incidente claro, responsable y alerta al equipo cuando importa.</p>
+        <p class="thesis reveal d4">detectar · agrupar · priorizar · notificar · resolver</p>
       </div>
       <footer>● SENTRA · AI SECURITY OPERATIONS CENTER</footer>
     </section>
@@ -603,7 +765,7 @@ footer {
 
 <div class="slide-controls" aria-label="Controles de diapositivas">
   <button class="slide-arrow" type="button" data-prev aria-label="Diapositiva anterior">←</button>
-  <span class="slide-indicator" aria-live="polite"><strong>01</strong> / 07</span>
+  <span class="slide-indicator" aria-live="polite"><strong>01</strong> / 06</span>
   <button class="slide-arrow" type="button" data-next aria-label="Diapositiva siguiente">→</button>
 </div>
 
@@ -616,7 +778,7 @@ footer {
   const next = document.querySelector('[data-next]');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let active = 0;
-  let counting = false;
+  let countTimer;
 
   const animateCount = (el) => {
     if (el.dataset.done === '1') return;
@@ -641,12 +803,9 @@ footer {
   };
 
   const runCountsIfNeeded = () => {
-    if (counting) return;
     const slide = slides[active];
     if (!slide || !slide.querySelector('[data-count]')) return;
-    counting = true;
     slide.querySelectorAll('[data-count]').forEach(animateCount);
-    counting = false;
   };
 
   const go = (index) => {
@@ -658,16 +817,34 @@ footer {
     previous.disabled = active === 0;
     next.disabled = active === slides.length - 1;
     slides.forEach((slide, i) => slide.classList.toggle('is-active', i === active));
-    runCountsIfNeeded();
+    clearTimeout(countTimer);
+    countTimer = setTimeout(runCountsIfNeeded, reduceMotion ? 0 : 450);
   };
 
   previous.addEventListener('click', () => go(active - 1));
   next.addEventListener('click', () => go(active + 1));
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn('No se pudo cambiar el modo de pantalla completa.', error);
+    }
+  };
+
   window.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') { event.preventDefault(); go(active - 1); }
     if (event.key === 'ArrowRight') { event.preventDefault(); go(active + 1); }
     if (event.key === 'Home') { event.preventDefault(); go(0); }
     if (event.key === 'End') { event.preventDefault(); go(slides.length - 1); }
+    if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      toggleFullscreen();
+    }
   });
 
   let wheelLock = false;
