@@ -1,7 +1,12 @@
-import authConfig from "../convex/auth.config";
-
 describe("auth.config Clerk wiring", () => {
-  it("declares a Clerk JWT provider with domain and applicationID", () => {
+  beforeAll(() => {
+    process.env.CLERK_JWT_ISSUER_DOMAIN =
+      "https://premium-humpback-2836.clerk.accounts.dev";
+    process.env.CLERK_JWT_APPLICATION_ID = "convex";
+  });
+
+  it("declares a Clerk JWT provider with domain and applicationID", async () => {
+    const { default: authConfig } = await import("../convex/auth.config");
     expect(authConfig.providers).toHaveLength(1);
     const provider = authConfig.providers[0];
     expect(provider).toEqual(

@@ -9,7 +9,6 @@ dist/
 data/clips/*
 data/events.jsonl
 !data/clips/.gitkeep
-data/*.log
 data/uploads/
 data/raw/
 data/rwf2000/
@@ -24,3 +23,8 @@ data/shoplifting-cctv/
 data/falls/
 data/_tune_prueba.json
 data/demo/
+.kiro/
+.angular/
+*.log
+dashboard/node_modules/
+dashboard/dist/

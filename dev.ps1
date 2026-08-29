@@ -17,7 +17,7 @@ Start-Sleep -Seconds 2
 
 Write-Host "Frontend -> http://localhost:5173" -ForegroundColor Cyan
 Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" `
-  -WorkingDirectory (Join-Path $root "frontend") -WindowStyle Minimized
+  -WorkingDirectory (Join-Path $root "dashboard") -WindowStyle Minimized
 
 Start-Sleep -Seconds 3
 Write-Host ""

@@ -3,16 +3,14 @@ import type { AuthConfig } from "convex/server";
 /**
  * Clerk JWT provider for Convex.
  *
- * Deploy-time values are placeholders until real Clerk issuer secrets are
- * configured. Mirror CLERK_JWT_ISSUER_DOMAIN / CLERK_JWT_APPLICATION_ID from
- * `.env.example` into the Convex dashboard, then replace these literals
- * (or switch to `process.env.*`) before production.
+ * Configure these variables in the Convex deployment environment. They are
+ * intentionally read at deployment time rather than committed to source.
  */
 export default {
   providers: [
     {
-      domain: "https://example.clerk.accounts.dev",
-      applicationID: "convex",
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN!,
+      applicationID: process.env.CLERK_JWT_APPLICATION_ID!,
     },
   ],
 } satisfies AuthConfig;

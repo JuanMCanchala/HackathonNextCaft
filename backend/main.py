@@ -354,7 +354,9 @@ async def ws_endpoint(ws: WebSocket):
         state["clients"].discard(ws)
 
 
-DIST = config.ROOT / "frontend" / "dist"
+# El panel de operador vive en dashboard/. `frontend/` es el SOC en Angular
+# del resto del equipo, que se despliega aparte.
+DIST = config.ROOT / "dashboard" / "dist"
 if DIST.exists():
     app.mount("/", StaticFiles(directory=str(DIST), html=True), name="ui")
 else:
@@ -362,6 +364,6 @@ else:
     def root():
         return JSONResponse({
             "service": "sentinel",
-            "ui": "compila el frontend con: cd frontend && npm run build",
+            "ui": "compila el panel con: cd dashboard && npm run build",
             "endpoints": ["/api/state", "/api/domains", "/api/events", "/video.mjpg", "/ws"],
         })
