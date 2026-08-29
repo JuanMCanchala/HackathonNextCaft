@@ -188,6 +188,7 @@ class Analyzer:
             job.progress = 0.9 + 0.1 * (i / max(len(pending), 1))
             self._emit_job(job)
             event = self.events.create(domain.id, tid, score, values)
+            event.camera = "archivo"
             event.source = job.name
             event.offset = round(t, 2)
             self._emit_event(event)

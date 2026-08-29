@@ -12,6 +12,20 @@
 
 ---
 
+## Los tres problemas que el estado del arte declara sin resolver
+
+El proyecto que gano TreeHacks 2025 con esta misma idea publico los tres retos
+que no termino de resolver. Son exactamente los tres que ataca nuestra
+arquitectura, y conviene decirlo con sus palabras:
+
+| Su reto declarado | Nuestra respuesta, medida |
+|---|---|
+| "Equilibrar el procesado en tiempo real con el rendimiento del navegador y los rate limits de Gemini" | Ellos corrian TensorFlow.js **en el navegador**. Nosotros nativo a 29 FPS; el cooldown por persona hace los rate limits estructuralmente imposibles |
+| "Minimizar los falsos positivos" | Cascada de dos etapas medida: gesticular puntua 0,02 y pelear 1,00. Mas bucle de feedback humano que recalcula la precision en vivo |
+| "Gestionar multiples streams sin saturar el sistema" | N camaras comparten **un** presupuesto de inferencia round-robin. Medido: 28,6 + 12,0 = 40,6 FPS con dos feeds en CPU |
+
+---
+
 ## El numero que hay que decir en voz alta
 
 | | Frames por hora a 30 FPS |
@@ -19,6 +33,17 @@
 | Video crudo | 108.000 |
 | Enfoque ingenuo: 1 frame/s al VLM | 3.600 |
 | Sentinel: ~30 disparos/hora x 10 frames | **~300** |
+
+Otros numeros medidos que conviene tener a mano:
+
+| Que | Medido |
+|---|---|
+| FPS de la Etapa 0 en CPU (sin GPU) | 29,4 |
+| Dos camaras a la vez, CPU | 28,6 + 12,0 = 40,6 FPS |
+| Latencia de la Etapa 2 | 4,4 s con `flash-lite` (9,9 s con `flash`) |
+| Analisis de un video subido | 12,5 s de video en 8,4 s |
+| Discriminacion gesticular vs pelear | 0,02 vs 1,00 |
+| Escenarios sinteticos que discriminan | 8 de 8 |
 
 **99,7% de los frames nunca llegan al modelo de pago.** Con el free tier de
 Gemini Flash la demo entera sale a coste cero.
@@ -57,7 +82,20 @@ nada delante del jurado.
 6. **Feedback humano.** Pulsar "falso positivo" en una tarjeta y ensenar como la
    metrica de precision del cabecero se actualiza sola.
 
-7. **Cerrar con etica.** "No hay reconocimiento facial ni biometria. La Etapa 1
+7. **Que os traigan un video.** Boton "Analizar un video": el jurado puede darte
+   su propio MP4 y lo procesa mas rapido que tiempo real. Es el momento en que
+   se ve que no hay truco ni escena preparada.
+
+8. **La cronologia.** Abrir "Cronologia" en una tarjeta: `t-1.8s la mano se
+   dirige al torso`, `t-1.3s permanece sobre el cuerpo`, `t+0.0s dispara`.
+   Remate: "esto no lo escribio el modelo, sale de la geometria medida frame a
+   frame; cada linea se puede auditar contra su numero".
+
+9. **Preguntarle al incidente.** "Preguntar sobre este incidente" y escribir algo
+   que no este en el veredicto: "¿llevaba mochila?". Se le devuelven los mismos
+   frames al VLM para que mire otra vez.
+
+10. **Cerrar con etica.** "No hay reconocimiento facial ni biometria. La Etapa 1
    solo mide geometria corporal y al VLM se le prohibe explicitamente razonar
    sobre raza, genero, edad o vestimenta. Cada alerta guarda su evidencia
    escrita, asi que es auditable."
@@ -109,7 +147,7 @@ veredicto explicado. El sistema degrada, no se cae.
 ## Antes de presentar
 
 ```powershell
-python -m tools.selftest                                  # 7 escenarios sinteticos
+python -m tools.selftest                                  # 8 escenarios sinteticos
 .venv\Scripts\python.exe -m tools.bench data\samples       # precision y recall reales
 ```
 

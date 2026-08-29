@@ -21,7 +21,6 @@ PHRASES = {
     "immobility": ("deja de moverse", "continua inmovil"),
     "dwell": ("se detiene en el sitio", "sigue parado en el mismo punto"),
     "zone": ("entra en zona restringida", "permanece en zona restringida"),
-    "presence": ("persona en encuadre", "persona en encuadre"),
 }
 
 RISE = 0.45          # cruce al alza que merece una linea
@@ -41,7 +40,8 @@ def build(samples: list[tuple], domain: Domain, t_trigger: float,
         return []
 
     grid = np.linspace(usable[0][0], usable[-1][0], STEPS)
-    names = [n for n in domain.weights if n in SIGNALS]
+    # `presence` vale 1.0 siempre que haya alguien: no marca ningun momento.
+    names = [n for n in domain.weights if n in SIGNALS and n != "presence"]
     if not names:
         return []
 
