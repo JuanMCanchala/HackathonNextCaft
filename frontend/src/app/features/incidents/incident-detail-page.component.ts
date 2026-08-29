@@ -87,6 +87,49 @@ import type { OperationalSeverity } from '../../core/models/enums';
         </div>
 
         <section>
+          <h2 class="mb-3 text-sm uppercase tracking-wide text-[var(--sentra-text-low)]">
+            Qué ocurrió
+          </h2>
+
+          @if (clipUrl(); as clip) {
+            <video
+              [src]="clip"
+              controls
+              autoplay
+              muted
+              loop
+              playsinline
+              class="mb-4 block w-full rounded-lg border border-[var(--sentra-line)] bg-black"
+            ></video>
+          } @else if (imagenUrl(); as img) {
+            <img
+              [src]="img"
+              alt="Momento de la detección"
+              class="mb-4 block w-full rounded-lg border border-[var(--sentra-line)] bg-black"
+            />
+          }
+
+          @if (analisis(); as texto) {
+            <div
+              class="rounded-lg border border-[var(--sentra-line)] border-l-4 border-l-[var(--sentra-signal-cyan)] bg-[var(--sentra-bg-panel)] p-4"
+            >
+              <p class="mb-2 font-mono text-[10px] uppercase tracking-widest text-[var(--sentra-text-low)]">
+                Análisis de la escena
+              </p>
+              <p class="max-w-[64ch] leading-relaxed text-[var(--sentra-text-hi)]">{{ texto }}</p>
+              <p class="mt-3 font-mono text-[11px] text-[var(--sentra-text-low)]">
+                Verificado por Gemini
+              </p>
+            </div>
+          } @else if (!clipUrl() && !imagenUrl()) {
+            <p class="text-sm text-[var(--sentra-text-mid)]">
+              Este incidente no guardó grabación ni análisis. Ocurre con los registrados antes
+              de que el sistema los almacenara.
+            </p>
+          }
+        </section>
+
+        <section>
           <h2 class="mb-3 text-sm uppercase tracking-wide text-[var(--sentra-text-low)]">Timeline</h2>
           <app-timeline-view [entries]="inc.timeline" />
         </section>
@@ -170,5 +213,43 @@ export class IncidentDetailPageComponent implements OnInit {
 
   isUrl(value: string): boolean {
     return /^https?:\/\//i.test(value);
+  }
+
+  /**
+   * Las referencias vienen como `url#mime`: el almacenamiento de Convex sirve
+   * todo bajo la misma ruta sin extension, asi que sin esa marca no hay forma
+   * de saber si una referencia es la imagen del correo o el clip del panel.
+   * Las antiguas no la llevan y cuentan como imagen, que es lo que eran.
+   */
+  private evidencias(): Array<{ url: string; mime: string }> {
+    return this.store
+      .detections()
+      .flatMap((d) => d.evidenceIds)
+      .filter((ref) => this.isUrl(ref))
+      .map((ref) => {
+        const corte = ref.indexOf('#');
+        return corte === -1
+          ? { url: ref, mime: 'image/jpeg' }
+          : { url: ref.slice(0, corte), mime: ref.slice(corte + 1) };
+      });
+  }
+
+  clipUrl(): string | null {
+    return this.evidencias().find((e) => e.mime.startsWith('video/'))?.url ?? null;
+  }
+
+  imagenUrl(): string | null {
+    return this.evidencias().find((e) => e.mime.startsWith('image/'))?.url ?? null;
+  }
+
+  /** Lo que el verificador describio de la escena, si quedo guardado. */
+  analisis(): string | null {
+    for (const deteccion of this.store.detections()) {
+      const texto = deteccion.metadata?.['summary'];
+      if (typeof texto === 'string' && texto.trim().length > 0) {
+        return texto;
+      }
+    }
+    return null;
   }
 }

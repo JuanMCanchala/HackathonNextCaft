@@ -2,7 +2,10 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import { requireActiveMembership } from "./lib/authz";
+import { toDetection } from "./lib/dto/detections";
 import { DEFAULT_GROUPING_WINDOW_MS, findGroupingTarget } from "./lib/domain/group";
 import {
   intakePayloadFingerprint,
@@ -338,5 +341,53 @@ export const acceptNormalized = internalMutation({
     });
 
     return result;
+  },
+});
+
+/**
+ * Las detecciones de un incidente, con su evidencia y lo que dijo el
+ * verificador.
+ *
+ * El panel solo recibia los identificadores dentro del detalle del incidente,
+ * asi que la ficha ensenaba una lista de cadenas: no habia forma de ver el
+ * clip ni de leer el analisis. Los datos estaban guardados desde el principio;
+ * faltaba la puerta.
+ *
+ * Exige membresia activa como el resto de las lecturas del workspace. No se
+ * apoya en la vista publica: esto es el panel interno.
+ */
+export const listByIncident = query({
+  args: {
+    incidentId: v.id("incidents"),
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    const incidente = await ctx.db.get(args.incidentId);
+    if (incidente === null) {
+      // No se distingue "no existe" de "no es tuyo": revelarlo diria a un
+      // extrano que ese identificador es real.
+      return { items: [], nextCursor: null, hasMore: false };
+    }
+    await requireActiveMembership(ctx, incidente.workspaceId);
+
+    const limite = Math.min(Math.max(args.paginationOpts?.numItems ?? 25, 1), 100);
+    const enlaces = await ctx.db
+      .query("incidentDetections")
+      .withIndex("by_workspace_and_incident", (q) =>
+        q.eq("workspaceId", incidente.workspaceId).eq("incidentId", args.incidentId),
+      )
+      .take(limite + 1);
+
+    const hasMore = enlaces.length > limite;
+    const documentos = await Promise.all(
+      enlaces.slice(0, limite).map((enlace) => ctx.db.get(enlace.detectionId)),
+    );
+    return {
+      items: documentos
+        .filter((doc): doc is NonNullable<typeof doc> => doc !== null)
+        .map((doc) => toDetection(doc, args.incidentId)),
+      nextCursor: null,
+      hasMore,
+    };
   },
 });

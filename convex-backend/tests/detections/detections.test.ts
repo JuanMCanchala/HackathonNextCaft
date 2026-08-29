@@ -225,3 +225,126 @@ describe("detections.acceptNormalized", () => {
     );
   });
 });
+
+describe("detecciones de un incidente", () => {
+  it("devuelve la evidencia y el analisis, no solo identificadores", async () => {
+    // Es el motivo de que exista esta query: el panel recibia una lista de
+    // cadenas y no podia ensenar ni el clip ni lo que vio el verificador.
+    const t = createTestBackend();
+    const { workspaceId, cameraId, adminIdentity } = await sembrarParaDetecciones(t);
+
+    const aceptada = await t.mutation(internal.detections.acceptNormalized, {
+      workspaceId,
+      cameraId,
+      sourceNamespace: "sentinel-vision",
+      sourceEventId: "evt-detalle-1",
+      timestamp: "2026-08-29T12:00:00Z",
+      category: "violence",
+      confidence: 0.91,
+      modelVersion: "gemini",
+      detectorVersion: "yolo",
+      summary: "Dos personas forcejean junto a la estanteria.",
+      evidenceRefs: ["https://cdn.ejemplo.com/clip.gif#image/gif"],
+    });
+
+    const pagina = await t
+      .withIdentity(adminIdentity)
+      .query(api.detections.listByIncident, { incidentId: aceptada.incidentId });
+
+    expect(pagina.items).toHaveLength(1);
+    expect(pagina.items[0]?.summary).toContain("forcejean");
+    expect(pagina.items[0]?.evidenceIds).toEqual(["https://cdn.ejemplo.com/clip.gif#image/gif"]);
+    expect(pagina.items[0]?.confidence).toBeCloseTo(0.91);
+  });
+
+  it("sin sesion no devuelve nada", async () => {
+    const t = createTestBackend();
+    const { workspaceId, cameraId } = await sembrarParaDetecciones(t);
+    const aceptada = await t.mutation(internal.detections.acceptNormalized, {
+      workspaceId,
+      cameraId,
+      sourceNamespace: "sentinel-vision",
+      sourceEventId: "evt-detalle-2",
+      timestamp: "2026-08-29T12:00:00Z",
+      category: "violence",
+      confidence: 0.9,
+      modelVersion: "m",
+      detectorVersion: "d",
+    });
+
+    await expect(
+      t.query(api.detections.listByIncident, { incidentId: aceptada.incidentId }),
+    ).rejects.toThrow();
+  });
+
+  it("un miembro de otro workspace no ve estas detecciones", async () => {
+    const t = createTestBackend();
+    const { workspaceId, cameraId } = await sembrarParaDetecciones(t);
+    await t.mutation(internal.seed.bootstrap, {
+      adminTokenIdentifier: "issuer|admin-ajeno",
+      adminSubjectId: "admin-ajeno",
+      workspaceName: "Planta ajena",
+    });
+    const aceptada = await t.mutation(internal.detections.acceptNormalized, {
+      workspaceId,
+      cameraId,
+      sourceNamespace: "sentinel-vision",
+      sourceEventId: "evt-detalle-3",
+      timestamp: "2026-08-29T12:00:00Z",
+      category: "violence",
+      confidence: 0.9,
+      modelVersion: "m",
+      detectorVersion: "d",
+    });
+
+    await expect(
+      t
+        .withIdentity({ tokenIdentifier: "issuer|admin-ajeno", subject: "admin-ajeno" })
+        .query(api.detections.listByIncident, { incidentId: aceptada.incidentId }),
+    ).rejects.toThrow();
+  });
+
+  it("un incidente borrado devuelve vacio en vez de reventar", async () => {
+    // Un id con forma valida cuyo documento ya no esta. Convex rechaza los
+    // ids malformados en el validador, asi que este es el caso que de verdad
+    // llega al handler.
+    const t = createTestBackend();
+    const { workspaceId, cameraId, adminIdentity } = await sembrarParaDetecciones(t);
+    const aceptada = await t.mutation(internal.detections.acceptNormalized, {
+      workspaceId,
+      cameraId,
+      sourceNamespace: "sentinel-vision",
+      sourceEventId: "evt-detalle-4",
+      timestamp: "2026-08-29T12:00:00Z",
+      category: "violence",
+      confidence: 0.9,
+      modelVersion: "m",
+      detectorVersion: "d",
+    });
+    await t.run(async (ctx) => ctx.db.delete(aceptada.incidentId as Id<"incidents">));
+
+    const pagina = await t
+      .withIdentity(adminIdentity)
+      .query(api.detections.listByIncident, { incidentId: aceptada.incidentId });
+    expect(pagina.items).toHaveLength(0);
+  });
+});
+
+async function sembrarParaDetecciones(t: ReturnType<typeof createTestBackend>) {
+  const { workspaceId } = await t.mutation(internal.seed.bootstrap, {
+    adminTokenIdentifier: "issuer|admin-det",
+    adminSubjectId: "admin-det",
+    workspaceName: "Planta detecciones",
+  });
+  const adminIdentity = { tokenIdentifier: "issuer|admin-det", subject: "admin-det" };
+  const camara = await t.withIdentity(adminIdentity).mutation(api.cameras.create, {
+    workspaceId: workspaceId as never,
+    externalId: "cam-det",
+    label: "Entrada",
+  });
+  return {
+    workspaceId: workspaceId as never,
+    cameraId: camara.id as never,
+    adminIdentity,
+  };
+}
