@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
+import statistics
 from pathlib import Path
 
 
@@ -85,11 +87,60 @@ def barrer(clips: list[dict], puntuar, techo_fpr: float):
     return mejor
 
 
+def partir(clips: list[dict], semilla: int):
+    """Dos mitades con la misma proporcion de positivos en cada una."""
+    pos = [c for c in clips if c["positivo"]]
+    neg = [c for c in clips if not c["positivo"]]
+    rnd = random.Random(semilla)
+    rnd.shuffle(pos)
+    rnd.shuffle(neg)
+    mp, mn = len(pos) // 2, len(neg) // 2
+    return pos[:mp] + neg[:mn], pos[mp:] + neg[mn:]
+
+
+def validar(clips: list[dict], puntuar, techo_fpr: float, vueltas: int = 20) -> dict:
+    """Elige el umbral en una mitad y lo mide en la otra, muchas veces.
+
+    Elegir el umbral viendo todos los clips y luego presumir de ese numero es
+    hacer trampa: el umbral se habria ajustado a las respuestas. Aqui se decide
+    en la mitad de ajuste y se mide en la de validacion, que el umbral no vio.
+
+    Se repite con 20 particiones distintas porque con ~90 positivos por mitad
+    una sola es demasiado ruidosa: la dispersion entre particiones es la que
+    dice si un resultado es real o casualidad.
+    """
+    recalls, fprs, umbrales = [], [], []
+    for semilla in range(vueltas):
+        ajuste, valida = partir(clips, semilla)
+        hit = barrer(ajuste, puntuar, techo_fpr)
+        if hit is None:
+            continue
+        th, _ = hit
+        r = evaluar(valida, puntuar, th)
+        recalls.append(r["recall"])
+        fprs.append(r["fpr"])
+        umbrales.append(th)
+
+    if not recalls:
+        return {}
+    return {
+        "recall": statistics.mean(recalls),
+        "recall_sd": statistics.pstdev(recalls),
+        "fpr": statistics.mean(fprs),
+        "umbral": statistics.median(umbrales),
+        "umbral_min": min(umbrales),
+        "umbral_max": max(umbrales),
+        "n": len(recalls),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("json", type=Path)
     ap.add_argument("--fpr", type=float, default=0.40,
                     help="techo de falsos positivos aceptable (0-1)")
+    ap.add_argument("--vueltas", type=int, default=20,
+                    help="cuantas particiones ajuste/validacion se prueban")
     args = ap.parse_args()
 
     data = json.loads(args.json.read_text(encoding="utf-8"))
@@ -114,18 +165,48 @@ def main() -> int:
         ("mixto 80/20", mixto(pesos, 0.8)),
     ]
 
-    print("=" * 74)
-    print(f"  {'diseno':<28}{'umbral':>8}{'recall':>9}{'FPR':>8}"
+    print("=" * 78)
+    print("  SOBRE TODOS LOS CLIPS  ·  optimista, el umbral vio las respuestas")
+    print("=" * 78)
+    print(f"  {'diseno':<26}{'umbral':>8}{'recall':>9}{'FPR':>8}"
           f"{'precision':>11}{'llamadas':>10}")
-    print("=" * 74)
     for nombre, fn in disenos:
         hit = barrer(clips, fn, args.fpr)
         if hit is None:
-            print(f"  {nombre:<28}{'—':>8}  no alcanza ese techo de FPR")
+            print(f"  {nombre:<26}{'—':>8}  no alcanza ese techo de FPR")
             continue
         th, r = hit
-        print(f"  {nombre:<28}{th:>8.2f}{r['recall']:>9.1%}{r['fpr']:>8.1%}"
+        print(f"  {nombre:<26}{th:>8.2f}{r['recall']:>9.1%}{r['fpr']:>8.1%}"
               f"{r['precision']:>11.1%}{r['llamadas']:>10}")
+
+    print()
+    print("=" * 78)
+    print(f"  VALIDADO EN MITAD CIEGA  ·  {args.vueltas} particiones. ESTOS son los numeros")
+    print("=" * 78)
+    print(f"  {'diseno':<26}{'umbral':>10}{'recall':>16}{'FPR':>9}")
+    resultados = []
+    for nombre, fn in disenos:
+        v = validar(clips, fn, args.fpr, args.vueltas)
+        if not v:
+            print(f"  {nombre:<26}  no alcanza ese techo de FPR")
+            continue
+        resultados.append((v["recall"], nombre, v))
+        print(f"  {nombre:<26}{v['umbral']:>10.2f}"
+              f"{v['recall']:>10.1%} ±{v['recall_sd']:>4.1%}{v['fpr']:>9.1%}")
+
+    if resultados:
+        resultados.sort(reverse=True)
+        mejor_r, mejor_n, mejor_v = resultados[0]
+        print()
+        print(f"  Gana: {mejor_n}  ->  recall {mejor_r:.1%} (±{mejor_v['recall_sd']:.1%}) "
+              f"con FPR {mejor_v['fpr']:.1%}")
+        print(f"  Umbral estable entre {mejor_v['umbral_min']:.2f} y "
+              f"{mejor_v['umbral_max']:.2f} segun la particion.")
+        if len(resultados) > 1:
+            hueco = mejor_r - resultados[1][0]
+            if hueco < mejor_v["recall_sd"]:
+                print(f"  Aviso: le saca {hueco:.1%} al segundo, por debajo de su propia")
+                print("  dispersion. La diferencia NO es concluyente con estos datos.")
 
     # Cuanto cuestan los `require`
     con = sum(1 for c in clips if c["positivo"] and c["score"] > 0)
