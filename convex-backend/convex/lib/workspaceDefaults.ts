@@ -1,0 +1,5 @@
+export const DEFAULT_GROUPING_WINDOW_SECONDS = 45;
+export const DEFAULT_RETENTION_DAYS = 30;
+export const DEFAULT_TIMEZONE = "UTC";
+
+export const WORKSPACE_NAME_MAX = 128;
