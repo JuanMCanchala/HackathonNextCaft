@@ -1,0 +1,457 @@
+{
+  "workspaces": [
+    {
+      "id": "ws_sentra_demo",
+      "name": "Sentra Demo — Planta Norte",
+      "status": "active",
+      "createdAt": "2026-01-15T10:00:00Z",
+      "updatedAt": "2026-08-20T14:30:00Z",
+      "settings": {
+        "groupingWindowSeconds": 45,
+        "retentionDays": 90,
+        "timezone": "America/Bogota"
+      }
+    },
+    {
+      "id": "ws_sentra_lab",
+      "name": "Sentra Lab — QA",
+      "status": "active",
+      "createdAt": "2026-03-01T08:00:00Z",
+      "updatedAt": "2026-08-25T09:00:00Z",
+      "settings": {
+        "groupingWindowSeconds": 30,
+        "retentionDays": 30,
+        "timezone": "America/Bogota"
+      }
+    }
+  ],
+  "cameras": [
+    {
+      "id": "cam_entrada_principal",
+      "workspaceId": "ws_sentra_demo",
+      "externalId": "ENT-01",
+      "label": "Entrada principal",
+      "location": "Acceso norte — lobby",
+      "adminStatus": "active",
+      "connectivity": "online",
+      "lastHeartbeatAt": "2026-08-29T17:20:00Z",
+      "version": 3,
+      "createdAt": "2026-02-01T12:00:00Z",
+      "updatedAt": "2026-08-29T17:20:00Z"
+    },
+    {
+      "id": "cam_pasillo_a",
+      "workspaceId": "ws_sentra_demo",
+      "externalId": "PAS-A-02",
+      "label": "Pasillo A — nivel 2",
+      "location": "Corredor este",
+      "adminStatus": "active",
+      "connectivity": "online",
+      "lastHeartbeatAt": "2026-08-29T17:18:30Z",
+      "version": 2,
+      "createdAt": "2026-02-01T12:00:00Z",
+      "updatedAt": "2026-08-29T17:18:30Z"
+    },
+    {
+      "id": "cam_almacen",
+      "workspaceId": "ws_sentra_demo",
+      "externalId": "ALM-03",
+      "label": "Almacén central",
+      "location": "Zona de carga",
+      "adminStatus": "active",
+      "connectivity": "degraded",
+      "lastHeartbeatAt": "2026-08-29T16:55:00Z",
+      "version": 5,
+      "createdAt": "2026-02-05T09:00:00Z",
+      "updatedAt": "2026-08-29T16:55:00Z"
+    },
+    {
+      "id": "cam_taller",
+      "workspaceId": "ws_sentra_demo",
+      "externalId": "TAL-04",
+      "label": "Taller industrial",
+      "location": "Área de maquinaria",
+      "adminStatus": "active",
+      "connectivity": "offline",
+      "lastHeartbeatAt": "2026-08-29T14:10:00Z",
+      "version": 1,
+      "createdAt": "2026-02-10T11:00:00Z",
+      "updatedAt": "2026-08-29T14:10:00Z"
+    },
+    {
+      "id": "cam_cafeteria",
+      "workspaceId": "ws_sentra_demo",
+      "externalId": "CAF-05",
+      "label": "Cafetería",
+      "location": "Planta baja",
+      "adminStatus": "paused",
+      "connectivity": "unknown",
+      "lastHeartbeatAt": null,
+      "version": 0,
+      "createdAt": "2026-03-01T08:00:00Z",
+      "updatedAt": "2026-03-01T08:00:00Z"
+    },
+    {
+      "id": "cam_lab_01",
+      "workspaceId": "ws_sentra_lab",
+      "externalId": "LAB-01",
+      "label": "Lab cámara 1",
+      "location": "Sala de pruebas",
+      "adminStatus": "active",
+      "connectivity": "online",
+      "lastHeartbeatAt": "2026-08-29T17:22:00Z",
+      "version": 1,
+      "createdAt": "2026-04-01T10:00:00Z",
+      "updatedAt": "2026-08-29T17:22:00Z"
+    }
+  ],
+  "incidents": [
+    {
+      "id": "inc_001",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_entrada_principal",
+      "category": "intrusion",
+      "state": "detected",
+      "severity": "high",
+      "openedAt": "2026-08-29T16:45:00Z",
+      "lastObservedAt": "2026-08-29T16:45:12Z",
+      "assignedToSubjectId": null,
+      "version": 1,
+      "initialSeverity": "high",
+      "severityOverride": null,
+      "detectionIds": ["det_001"],
+      "evidenceIds": ["ev_001"],
+      "timeline": [
+        {
+          "id": "tl_001_1",
+          "at": "2026-08-29T16:45:00Z",
+          "type": "state_changed",
+          "actorKind": "ingestion",
+          "actorId": null,
+          "from": null,
+          "to": "detected",
+          "message": "Incidente creado por detección de IA"
+        },
+        {
+          "id": "tl_001_2",
+          "at": "2026-08-29T16:45:01Z",
+          "type": "detection_linked",
+          "actorKind": "system",
+          "actorId": null,
+          "message": "Detección det_001 vinculada"
+        }
+      ]
+    },
+    {
+      "id": "inc_002",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_taller",
+      "category": "sin casco",
+      "state": "triaged",
+      "severity": "medium",
+      "openedAt": "2026-08-29T15:30:00Z",
+      "lastObservedAt": "2026-08-29T15:32:00Z",
+      "assignedToSubjectId": null,
+      "version": 2,
+      "initialSeverity": "medium",
+      "severityOverride": null,
+      "detectionIds": ["det_002"],
+      "evidenceIds": ["ev_002"],
+      "timeline": [
+        {
+          "id": "tl_002_1",
+          "at": "2026-08-29T15:30:00Z",
+          "type": "state_changed",
+          "actorKind": "ingestion",
+          "actorId": null,
+          "from": null,
+          "to": "detected",
+          "message": null
+        },
+        {
+          "id": "tl_002_2",
+          "at": "2026-08-29T15:35:00Z",
+          "type": "state_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "detected",
+          "to": "triaged",
+          "message": "Clasificado como seguridad industrial"
+        }
+      ]
+    },
+    {
+      "id": "inc_003",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_almacen",
+      "category": "posible robo",
+      "state": "acknowledged",
+      "severity": "critical",
+      "openedAt": "2026-08-29T14:00:00Z",
+      "lastObservedAt": "2026-08-29T14:05:00Z",
+      "assignedToSubjectId": "user_supervisor_01",
+      "version": 3,
+      "initialSeverity": "high",
+      "severityOverride": {
+        "from": "high",
+        "to": "critical",
+        "reason": "Múltiples detecciones en zona restringida",
+        "actorSubjectId": "user_operator_demo",
+        "at": "2026-08-29T14:10:00Z"
+      },
+      "detectionIds": ["det_003", "det_004"],
+      "evidenceIds": ["ev_003"],
+      "timeline": [
+        {
+          "id": "tl_003_1",
+          "at": "2026-08-29T14:00:00Z",
+          "type": "state_changed",
+          "actorKind": "ingestion",
+          "actorId": null,
+          "from": null,
+          "to": "detected",
+          "message": null
+        },
+        {
+          "id": "tl_003_2",
+          "at": "2026-08-29T14:08:00Z",
+          "type": "state_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "detected",
+          "to": "triaged",
+          "message": null
+        },
+        {
+          "id": "tl_003_3",
+          "at": "2026-08-29T14:12:00Z",
+          "type": "severity_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "high",
+          "to": "critical",
+          "message": "Múltiples detecciones en zona restringida"
+        },
+        {
+          "id": "tl_003_4",
+          "at": "2026-08-29T14:15:00Z",
+          "type": "state_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "triaged",
+          "to": "acknowledged",
+          "message": "Operador en camino"
+        }
+      ]
+    },
+    {
+      "id": "inc_004",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_pasillo_a",
+      "category": "fall",
+      "state": "resolved",
+      "severity": "high",
+      "openedAt": "2026-08-28T20:00:00Z",
+      "lastObservedAt": "2026-08-28T20:15:00Z",
+      "assignedToSubjectId": null,
+      "version": 5,
+      "initialSeverity": "high",
+      "severityOverride": null,
+      "detectionIds": ["det_005"],
+      "evidenceIds": ["ev_004"],
+      "timeline": [
+        {
+          "id": "tl_004_1",
+          "at": "2026-08-28T20:00:00Z",
+          "type": "state_changed",
+          "actorKind": "ingestion",
+          "actorId": null,
+          "from": null,
+          "to": "detected",
+          "message": null
+        },
+        {
+          "id": "tl_004_2",
+          "at": "2026-08-28T20:45:00Z",
+          "type": "state_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "acknowledged",
+          "to": "resolved",
+          "message": "Personal de salud atendió en sitio"
+        }
+      ]
+    },
+    {
+      "id": "inc_005",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_cafeteria",
+      "category": "posible altercado",
+      "state": "dismissed",
+      "severity": "low",
+      "openedAt": "2026-08-27T18:00:00Z",
+      "lastObservedAt": "2026-08-27T18:02:00Z",
+      "assignedToSubjectId": null,
+      "version": 2,
+      "initialSeverity": "medium",
+      "severityOverride": null,
+      "detectionIds": ["det_006"],
+      "evidenceIds": [],
+      "timeline": [
+        {
+          "id": "tl_005_1",
+          "at": "2026-08-27T18:00:00Z",
+          "type": "state_changed",
+          "actorKind": "ingestion",
+          "actorId": null,
+          "from": null,
+          "to": "detected",
+          "message": null
+        },
+        {
+          "id": "tl_005_2",
+          "at": "2026-08-27T18:10:00Z",
+          "type": "state_changed",
+          "actorKind": "user",
+          "actorId": "user_operator_demo",
+          "from": "detected",
+          "to": "dismissed",
+          "message": "Falso positivo — celebración de equipo, no altercado"
+        }
+      ]
+    }
+  ],
+  "detections": [
+    {
+      "id": "det_001",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_entrada_principal",
+      "incidentId": "inc_001",
+      "occurredAt": "2026-08-29T16:45:00Z",
+      "receivedAt": "2026-08-29T16:45:01Z",
+      "category": "intrusion",
+      "suggestedCategory": "intrusion",
+      "confidence": 0.87,
+      "modelVersion": "sentra-v1.2.0",
+      "detectorVersion": "det-intrusion-0.9.1",
+      "evidenceIds": ["ev_001"],
+      "metadata": { "zone": "perimeter_north", "objects": 1 }
+    },
+    {
+      "id": "det_002",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_taller",
+      "incidentId": "inc_002",
+      "occurredAt": "2026-08-29T15:30:00Z",
+      "receivedAt": "2026-08-29T15:30:02Z",
+      "category": "sin casco",
+      "suggestedCategory": "sin casco",
+      "confidence": 0.92,
+      "modelVersion": "sentra-v1.2.0",
+      "detectorVersion": "det-ppe-0.8.3",
+      "evidenceIds": ["ev_002"]
+    },
+    {
+      "id": "det_003",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_almacen",
+      "incidentId": "inc_003",
+      "occurredAt": "2026-08-29T14:00:00Z",
+      "receivedAt": "2026-08-29T14:00:01Z",
+      "category": "posible robo",
+      "suggestedCategory": "posible robo",
+      "confidence": 0.78,
+      "modelVersion": "sentra-v1.2.0",
+      "detectorVersion": "det-theft-0.7.2",
+      "evidenceIds": ["ev_003"]
+    },
+    {
+      "id": "det_004",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_almacen",
+      "incidentId": "inc_003",
+      "occurredAt": "2026-08-29T14:04:00Z",
+      "receivedAt": "2026-08-29T14:04:01Z",
+      "category": "posible robo",
+      "suggestedCategory": "posible robo",
+      "confidence": 0.81,
+      "modelVersion": "sentra-v1.2.0",
+      "detectorVersion": "det-theft-0.7.2",
+      "evidenceIds": []
+    },
+    {
+      "id": "det_005",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_pasillo_a",
+      "incidentId": "inc_004",
+      "occurredAt": "2026-08-28T20:00:00Z",
+      "receivedAt": "2026-08-28T20:00:02Z",
+      "category": "fall",
+      "suggestedCategory": "fall",
+      "confidence": 0.95,
+      "modelVersion": "sentra-v1.1.0",
+      "detectorVersion": "det-fall-0.6.0",
+      "evidenceIds": ["ev_004"]
+    },
+    {
+      "id": "det_006",
+      "workspaceId": "ws_sentra_demo",
+      "cameraId": "cam_cafeteria",
+      "incidentId": "inc_005",
+      "occurredAt": "2026-08-27T18:00:00Z",
+      "receivedAt": "2026-08-27T18:00:01Z",
+      "category": "posible altercado",
+      "suggestedCategory": "posible altercado",
+      "confidence": 0.55,
+      "modelVersion": "sentra-v1.1.0",
+      "detectorVersion": "det-aggression-0.5.1",
+      "evidenceIds": []
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_001",
+      "workspaceId": "ws_sentra_demo",
+      "incidentId": "inc_001",
+      "detectionId": "det_001",
+      "kind": "snapshot",
+      "contentType": "image/jpeg",
+      "capturedAt": "2026-08-29T16:45:00Z",
+      "retentionExpiresAt": "2026-11-29T16:45:00Z",
+      "status": "available"
+    },
+    {
+      "id": "ev_002",
+      "workspaceId": "ws_sentra_demo",
+      "incidentId": "inc_002",
+      "detectionId": "det_002",
+      "kind": "snapshot",
+      "contentType": "image/jpeg",
+      "capturedAt": "2026-08-29T15:30:00Z",
+      "retentionExpiresAt": "2026-11-29T15:30:00Z",
+      "status": "available"
+    },
+    {
+      "id": "ev_003",
+      "workspaceId": "ws_sentra_demo",
+      "incidentId": "inc_003",
+      "detectionId": "det_003",
+      "kind": "snapshot",
+      "contentType": "image/jpeg",
+      "capturedAt": "2026-08-29T14:00:00Z",
+      "retentionExpiresAt": "2026-11-29T14:00:00Z",
+      "status": "available"
+    },
+    {
+      "id": "ev_004",
+      "workspaceId": "ws_sentra_demo",
+      "incidentId": "inc_004",
+      "detectionId": "det_005",
+      "kind": "snapshot",
+      "contentType": "image/jpeg",
+      "capturedAt": "2026-08-28T20:00:00Z",
+      "retentionExpiresAt": "2026-11-28T20:00:00Z",
+      "status": "expired"
+    }
+  ]
+}
