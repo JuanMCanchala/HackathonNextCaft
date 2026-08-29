@@ -11,11 +11,7 @@ const membershipStatus = v.union(v.literal("active"), v.literal("inactive"));
 
 const workspaceStatus = v.union(v.literal("active"), v.literal("suspended"));
 
-const cameraAdminStatus = v.union(
-  v.literal("active"),
-  v.literal("paused"),
-  v.literal("disabled"),
-);
+const cameraAdminStatus = v.union(v.literal("active"), v.literal("paused"), v.literal("disabled"));
 
 const cameraConnectivity = v.union(
   v.literal("online"),
@@ -97,11 +93,7 @@ export default defineSchema({
     detectorVersion: v.optional(v.string()),
     suggestedCategory: v.optional(v.string()),
     evidenceRefs: v.optional(v.array(v.string())),
-  }).index("by_workspace_source_event", [
-    "workspaceId",
-    "sourceNamespace",
-    "sourceEventId",
-  ]),
+  }).index("by_workspace_source_event", ["workspaceId", "sourceNamespace", "sourceEventId"]),
 
   incidents: defineTable({
     workspaceId: v.id("workspaces"),
@@ -109,6 +101,7 @@ export default defineSchema({
     category: v.string(),
     state: incidentState,
     severity: operationalSeverity,
+    initialSeverity: operationalSeverity,
     severityRuleVersion: v.string(),
     openedAt: v.number(),
     lastObservedAt: v.number(),

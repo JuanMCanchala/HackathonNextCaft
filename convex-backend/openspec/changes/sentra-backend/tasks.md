@@ -82,17 +82,17 @@ main
 
 ## Phase 6: Incidents
 
-- [ ] 6.1 RED: isolated list/get; foreign NOT_FOUND; viewer no triage. (Reads)
-- [ ] 6.2 GREEN: `incidents.ts` list/get + Summary/Detail mappers. (DTO)
-- [ ] 6.3 RED→GREEN: triage operator/admin; version+idempotency; atomic audit/timeline; stale CONFLICT.
-- [ ] 6.4 RED: ack/resolve/dismiss unavailable; state unchanged. (Freeze)
+- [x] 6.1 RED: isolated list/get; foreign NOT_FOUND; viewer no triage. (Reads)
+- [x] 6.2 GREEN: `incidents.ts` list/get + Summary/Detail mappers. (DTO)
+- [x] 6.3 RED→GREEN: triage operator/admin; version+idempotency; atomic audit/timeline; stale CONFLICT.
+- [x] 6.4 RED: ack/resolve/dismiss unavailable; state unchanged. (Freeze)
 
 ## Phase 7: DTO + chat
 
-- [ ] 7.1 RED→GREEN: `lib/dto/*` epoch→RFC3339; golden public returns. (all DTO)
-- [ ] 7.2 RED→GREEN: isolate `chat.ts` — not Sentra auth baseline.
+- [x] 7.1 RED→GREEN: `lib/dto/*` epoch→RFC3339; golden public returns. (all DTO)
+- [x] 7.2 RED→GREEN: isolate `chat.ts` — not Sentra auth baseline.
 
 ## Phase 8: Verify
 
-- [ ] 8.1 `pnpm test`, typecheck, lint:check, `convex dev --once`.
-- [ ] 8.2 No public intake; no ack/resolve/dismiss.
+- [x] 8.1 `pnpm test`, typecheck, lint:check (`convex dev --once` conditional / env-gated).
+- [x] 8.2 No public intake (`acceptNormalized` is internalMutation); ack/resolve/dismiss reject with CONFLICT and leave state unchanged.

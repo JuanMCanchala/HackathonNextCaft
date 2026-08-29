@@ -70,6 +70,7 @@ async function createIncidentFromDetection(
     category: args.observation.category,
     state: "detected",
     severity: severity.severity,
+    initialSeverity: severity.severity,
     severityRuleVersion: severity.ruleVersion,
     openedAt: args.observation.occurredAtMs,
     lastObservedAt: args.observation.occurredAtMs,
