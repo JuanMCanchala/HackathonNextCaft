@@ -2,12 +2,13 @@
 
 ### Apply progress (living)
 
-| Unit                      | Branch / PR                     | Status                                                                                    |
-| ------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1 Foundation              | `backend-01-foundation` / PR #2 | Merged into `backend`                                                                     |
-| 2 Cameras + agent harness | `backend-02-cameras` / PR #3    | Merged into `backend`                                                                     |
-| 3 Domain + intake         | `backend-03-intake` / PR #4     | Open — includes Phase 5b hygiene (`const`/Result parsers, bounded `.take`, thin adapters) |
-| 4 Incidents/DTO           | `backend-04-incidents`          | Pending                                                                                   |
+| Unit                      | Branch / PR                     | Status                                                        |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------- |
+| 1 Foundation              | `backend-01-foundation` / PR #2 | Merged into `backend`                                         |
+| 2 Cameras + agent harness | `backend-02-cameras` / PR #3    | Merged into `backend`                                         |
+| 3 Domain + intake         | `backend-03-intake` / PR #4     | Merged into `backend`                                         |
+| 4 Incidents/DTO/chat      | `backend-04-incidents`          | In progress — list/get/triage + freeze stubs + chat isolation |
+| Tracker merge             | `backend` → `main`              | Pending after Unit 4 merge                                    |
 
 Package path: product Convex code lives in `convex-backend/` (not the Python `backend/` model package).
 
@@ -17,9 +18,11 @@ Sentra's five product documents describe a target-state, tenant-isolated inciden
 
 **Shipped on tracker `backend` through Unit 2:** schema (workspaces/memberships/cameras/detections/incidents/audit/idempotency), Clerk `auth.config.ts`, `lib/authz` + `lib/errors`, seed, public `workspaces`/`cameras`, agent governance under `.agents/`/`.claude/`, Jest+convex-test harness.
 
-**In Unit 3 (PR #4):** pure `lib/domain/{normalize,group,severity,transition}`, `detections.acceptNormalized` internalMutation only, Phase 5b immutable/bounded-read hygiene per `AGENTS.md` / `RULES.md` / `.agents/rules`.
+**In Unit 3 (merged):** pure `lib/domain/{normalize,group,severity,transition}`, `detections.acceptNormalized` internalMutation only, Phase 5b immutable/bounded-read hygiene.
 
-Remaining: public `incidents` list/get/triage, DTO golden paths, chat isolation verification, Phase 8 gates.
+**In Unit 4 (this branch):** public `incidents.list`/`get`/`triage`, Incident Summary/Detail DTOs, ack/resolve/dismiss frozen stubs, chat explicitly isolated from Sentra authz, `initialSeverity` on incidents schema.
+
+Remaining after Unit 4 merge: draft tracker PR `backend` → `main` when ready.
 
 The OpenSpec config establishes hybrid persistence, strict TDD, Jest/ts-jest as the current runner, and Convex validation through `pnpm exec convex dev --once`.
 

@@ -87,6 +87,7 @@ describe("Sentra schema foundation", () => {
         category: "intrusion",
         state: "detected",
         severity: "high",
+        initialSeverity: "high",
         severityRuleVersion: "sev-v1",
         openedAt: now,
         lastObservedAt: now,

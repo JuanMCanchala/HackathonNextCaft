@@ -8,11 +8,18 @@ import { v } from "convex/values";
 import { supportAgent } from "./agents";
 import { normalizeMessage } from "./validation";
 
+/**
+ * Agent/chat support surface — NOT the Sentra product auth baseline.
+ * Do not import `./lib/authz` here or treat chat roles as workspace membership.
+ * Sentra authorization belongs in workspaces/cameras/incidents (+ detections intake).
+ */
+
 /** Create a persisted agent thread. Add auth identity checks before production use. */
 export const createThread = mutation({
   args: { title: v.optional(v.string()) },
   handler: async (ctx, { title }) => {
     // Auth-ready ownership hook: requireIdentity(ctx) and persist the subject here.
+    // Intentionally independent from Sentra workspace membership.
     const normalizedTitle = title?.trim();
     return await createAgentThread(
       ctx,

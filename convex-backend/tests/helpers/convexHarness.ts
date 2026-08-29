@@ -14,24 +14,20 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/workspaces.ts": () => import("../../convex/workspaces"),
   "../../convex/cameras.ts": () => import("../../convex/cameras"),
   "../../convex/detections.ts": () => import("../../convex/detections"),
+  "../../convex/incidents.ts": () => import("../../convex/incidents"),
   "../../convex/seed.ts": () => import("../../convex/seed"),
   "../../convex/lib/errors.ts": () => import("../../convex/lib/errors"),
   "../../convex/lib/authz.ts": () => import("../../convex/lib/authz"),
   "../../convex/lib/time.ts": () => import("../../convex/lib/time"),
-  "../../convex/lib/dto/workspaces.ts": () =>
-    import("../../convex/lib/dto/workspaces"),
+  "../../convex/lib/dto/workspaces.ts": () => import("../../convex/lib/dto/workspaces"),
   "../../convex/lib/dto/cameras.ts": () => import("../../convex/lib/dto/cameras"),
-  "../../convex/lib/domain/normalize.ts": () =>
-    import("../../convex/lib/domain/normalize"),
-  "../../convex/lib/domain/group.ts": () =>
-    import("../../convex/lib/domain/group"),
-  "../../convex/lib/domain/severity.ts": () =>
-    import("../../convex/lib/domain/severity"),
-  "../../convex/lib/domain/transition.ts": () =>
-    import("../../convex/lib/domain/transition"),
+  "../../convex/lib/dto/incidents.ts": () => import("../../convex/lib/dto/incidents"),
+  "../../convex/lib/domain/normalize.ts": () => import("../../convex/lib/domain/normalize"),
+  "../../convex/lib/domain/group.ts": () => import("../../convex/lib/domain/group"),
+  "../../convex/lib/domain/severity.ts": () => import("../../convex/lib/domain/severity"),
+  "../../convex/lib/domain/transition.ts": () => import("../../convex/lib/domain/transition"),
   "../../convex/_generated/api.js": () => import("../../convex/_generated/api.js"),
-  "../../convex/_generated/server.js": () =>
-    import("../../convex/_generated/server.js"),
+  "../../convex/_generated/server.js": () => import("../../convex/_generated/server.js"),
 };
 
 export type SentraTest = TestConvex<typeof schema>;
@@ -45,6 +41,13 @@ export const ADMIN_IDENTITY = {
   issuer: "https://clerk.example.com",
   tokenIdentifier: "https://clerk.example.com|user_admin_1",
   name: "Admin User",
+} as const;
+
+export const OPERATOR_IDENTITY = {
+  subject: "user_operator_1",
+  issuer: "https://clerk.example.com",
+  tokenIdentifier: "https://clerk.example.com|user_operator_1",
+  name: "Operator User",
 } as const;
 
 export const VIEWER_IDENTITY = {

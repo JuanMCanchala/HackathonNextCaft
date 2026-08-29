@@ -53,23 +53,25 @@ Roles: viewer read; operator+admin triage; workspace_admin camera create.
 
 ## File Changes
 
-| File                      | Action | Description                                                                                          |
-| ------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
-| `convex/schema.ts`        | Modify | Sentra tables/indexes; keep `threadMetadata`                                                         |
-| `convex/auth.config.ts`   | Create | Clerk JWT provider                                                                                   |
-| `convex/lib/authz.ts`     | Create | requireIdentity/membership/role                                                                      |
-| `convex/lib/errors.ts`    | Create | Stable codes + requestId                                                                             |
-| `convex/lib/dto/*`        | Create | Doc→API-CONTRACT mappers                                                                             |
-| `convex/lib/domain/*`     | Create | Pure normalize/group/severity/transition (immutable Result parsers; no `let` reassignment)           |
-| `convex/workspaces.ts`    | Create | list/get Workspace DTOs (membership-bounded `flatMap`, no mutable push)                              |
-| `convex/cameras.ts`       | Create | create/list/get Camera DTO (page-window `.take`, no unbounded `.collect`)                            |
-| `convex/detections.ts`    | Create | acceptNormalized internalMutation; thin adapter over domain helpers; grouping candidates `.take(64)` |
-| `convex/incidents.ts`     | Create | list/get/triage                                                                                      |
-| `convex/seed.ts`          | Create | Internal bootstrap seed                                                                              |
-| `convex/chat.ts`          | Modify | Isolate; not Sentra auth                                                                             |
-| `convex/convex.config.ts` | Modify | Typed env (Clerk, secrets)                                                                           |
-| `tests/**/*.test.ts`      | Create | Unit + convex-test                                                                                   |
-| `docs/API-CONTRACT*`      | Modify | Only if DTO gaps; keep 1.0.0-mvp                                                                     |
+| File                          | Action | Description                                                                                          |
+| ----------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `convex/schema.ts`            | Modify | Sentra tables/indexes; keep `threadMetadata`                                                         |
+| `convex/auth.config.ts`       | Create | Clerk JWT provider                                                                                   |
+| `convex/lib/authz.ts`         | Create | requireIdentity/membership/role                                                                      |
+| `convex/lib/errors.ts`        | Create | Stable codes + requestId                                                                             |
+| `convex/lib/dto/*`            | Create | Doc→API-CONTRACT mappers                                                                             |
+| `convex/lib/domain/*`         | Create | Pure normalize/group/severity/transition (immutable Result parsers; no `let` reassignment)           |
+| `convex/workspaces.ts`        | Create | list/get Workspace DTOs (membership-bounded `flatMap`, no mutable push)                              |
+| `convex/cameras.ts`           | Create | create/list/get Camera DTO (page-window `.take`, no unbounded `.collect`)                            |
+| `convex/detections.ts`        | Create | acceptNormalized internalMutation; thin adapter over domain helpers; grouping candidates `.take(64)` |
+| `convex/incidents.ts`         | Create | list/get/triage; acknowledge/resolve/dismiss frozen stubs (CONFLICT)                                 |
+| `convex/lib/dto/incidents.ts` | Create | IncidentSummary/Detail + timeline mappers                                                            |
+| `convex/schema.ts`            | Modify | Sentra tables; incidents include `initialSeverity`                                                   |
+| `convex/seed.ts`              | Create | Internal bootstrap seed                                                                              |
+| `convex/chat.ts`              | Modify | Isolate; not Sentra auth                                                                             |
+| `convex/convex.config.ts`     | Modify | Typed env (Clerk, secrets)                                                                           |
+| `tests/**/*.test.ts`          | Create | Unit + convex-test                                                                                   |
+| `docs/API-CONTRACT*`          | Modify | Only if DTO gaps; keep 1.0.0-mvp                                                                     |
 
 **Tables:** workspaces; memberships (`by_token_and_workspace`); cameras (`by_workspace_and_externalId`); detections (`by_workspace_source_event`); incidents (`by_workspace_state`, `by_workspace_camera_category_lastObserved`); incidentDetections; incidentTimeline; auditEntries; idempotencyRecords (`by_workspace_and_key`). Indexes lead with `workspaceId`.
 
