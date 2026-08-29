@@ -728,3 +728,45 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: var(--alert);
   border: 1px solid rgba(255, 90, 74, 0.3);
 }
+
+/* ------------------------------------------------------------ clips de demo */
+.demos {
+  padding: 11px 12px 10px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.demos .checklist-head .hint {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 450;
+  color: var(--accent);
+}
+
+.demo-fila { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+
+.demo-dom {
+  font-size: 11px;
+  color: var(--dim);
+  min-width: 116px;
+  flex-shrink: 0;
+}
+
+.demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 550;
+  font-family: var(--mono);
+  border: 1px solid var(--line);
+  background: #1d222a;
+  color: var(--muted);
+  transition: border-color 0.14s, color 0.14s;
+}
+
+.demo-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.demo-btn:disabled { opacity: 0.45; cursor: not-allowed; }

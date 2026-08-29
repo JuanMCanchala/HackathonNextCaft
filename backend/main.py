@@ -202,6 +202,50 @@ async def analyze(file: UploadFile = File(...)):
     return job.snapshot()
 
 
+@app.get("/api/demos")
+def get_demos():
+    """Clips verificados: el gate dispara Y el VLM lo confirma como incidente.
+
+    Existen para la demo en vivo. Ensenar un clip que acaba en gris porque el
+    VLM lo descarto es peor que no ensenar nada.
+    """
+    p = pipe()
+    salida = []
+    raiz = config.DATA_DIR / "demo"
+    for carpeta in sorted(raiz.glob("*")) if raiz.is_dir() else []:
+        if not carpeta.is_dir() or carpeta.name not in p.domains:
+            continue
+        for clip in sorted(carpeta.glob("*.mp4")):
+            salida.append({
+                "id": f"{carpeta.name}/{clip.stem}",
+                "domain": carpeta.name,
+                "domain_label": p.domains[carpeta.name].label,
+                "name": clip.stem,
+            })
+    return {"demos": salida}
+
+
+@app.post("/api/demos/{domain_id}/{nombre}/run")
+def run_demo(domain_id: str, nombre: str):
+    """Cambia al dominio del clip y lo pasa por la cascada completa."""
+    p = pipe()
+    if domain_id not in p.domains:
+        raise HTTPException(404, f"dominio desconocido: {domain_id}")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,80}", nombre):
+        raise HTTPException(400, "nombre de clip invalido")
+
+    clip = (config.DATA_DIR / "demo" / domain_id / f"{nombre}.mp4").resolve()
+    raiz = (config.DATA_DIR / "demo").resolve()
+    if raiz not in clip.parents or not clip.is_file():
+        raise HTTPException(404, "clip no encontrado")
+
+    # El clip solo dispara con el gate de SU dominio, asi que se cambia antes.
+    p.set_domain(domain_id)
+    job = p.analyze_file(clip)
+    _broadcast({"type": "state", "state": p.snapshot()})
+    return job.snapshot()
+
+
 @app.get("/api/jobs")
 def get_jobs():
     return {"jobs": pipe().analyzer.list_jobs()}

@@ -3,7 +3,7 @@ import {
   AlertTriangle, CheckCircle2, Clock3, Eye, FileVideo, HardHat, Layers,
   MessageSquare, Pause, PersonStanding, Play, Plus, Power, Radio, Send,
   ShieldCheck, ShoppingBag, Swords, ThumbsDown, ThumbsUp, Upload, VideoOff,
-  X, Zap,
+  Sparkles, X, Zap,
 } from 'lucide-react'
 
 const DOMAIN_ICONS = {
@@ -237,6 +237,57 @@ function Checklist({ items, domain }) {
         />
         <button onClick={anadir} disabled={!texto.trim()}><Plus size={12} /></button>
       </div>
+    </div>
+  )
+}
+
+function Demos() {
+  const [demos, setDemos] = useState([])
+  const [lanzando, setLanzando] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/demos').then((r) => r.json())
+      .then((d) => setDemos(d.demos || [])).catch(() => {})
+  }, [])
+
+  if (!demos.length) return null
+
+  const porDominio = demos.reduce((acc, d) => {
+    (acc[d.domain_label] ||= []).push(d)
+    return acc
+  }, {})
+
+  const lanzar = async (d) => {
+    setLanzando(d.id)
+    try {
+      await fetch(`/api/demos/${d.domain}/${d.name}/run`, { method: 'POST' })
+    } catch { /* el estado llega por websocket */ }
+    setTimeout(() => setLanzando(null), 1500)
+  }
+
+  return (
+    <div className="demos">
+      <div className="checklist-head">
+        <Sparkles size={13} />
+        Clips verificados
+        <span className="hint">el VLM ya los confirmo</span>
+      </div>
+      {Object.entries(porDominio).map(([label, lista]) => (
+        <div className="demo-fila" key={label}>
+          <span className="demo-dom">{label}</span>
+          {lista.map((d) => (
+            <button
+              key={d.id}
+              className="demo-btn"
+              onClick={() => lanzar(d)}
+              disabled={lanzando !== null}
+            >
+              {lanzando === d.id ? <span className="spinner" /> : <Play size={11} />}
+              {d.name.replace('demo_', '#')}
+            </button>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
@@ -620,6 +671,8 @@ export default function App() {
           {snapshot?.domain === 'industrial_safety' && (
             <Checklist items={snapshot.checklist} domain={snapshot.domain} />
           )}
+
+          <Demos />
 
           <Uploader jobs={jobs} />
         </section>
