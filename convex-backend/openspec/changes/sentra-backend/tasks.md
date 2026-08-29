@@ -40,18 +40,18 @@ main
 
 ## Phase 1: Foundation
 
-- [ ] 1.1 RED: Jest+convex-test helpers fail until schema/authz. (workspace-authorization)
-- [ ] 1.2 GREEN: `schema.ts` Sentra tables/indexes; keep `threadMetadata`. (all)
-- [ ] 1.3 RED→GREEN: `lib/errors.ts` ApiError+requestId. (validators)
-- [ ] 1.4 RED→GREEN: `auth.config.ts` + Clerk env in `convex.config.ts`. (Resolve context)
-- [ ] 1.5 RED→GREEN: `lib/authz.ts` identity/membership/role via `tokenIdentifier`. (Isolation)
-- [ ] 1.6 RED→GREEN: `seed.ts` internalMutation — workspace+admin (`retentionDays:30`,`timezone:UTC`).
+- [x] 1.1 RED: Jest+convex-test helpers fail until schema/authz. (workspace-authorization)
+- [x] 1.2 GREEN: `schema.ts` Sentra tables/indexes; keep `threadMetadata`. (all)
+- [x] 1.3 RED→GREEN: `lib/errors.ts` ApiError+requestId. (validators)
+- [x] 1.4 RED→GREEN: `auth.config.ts` + Clerk env in `convex.config.ts`. (Resolve context)
+- [x] 1.5 RED→GREEN: `lib/authz.ts` identity/membership/role via `tokenIdentifier`. (Isolation)
+- [x] 1.6 RED→GREEN: `seed.ts` internalMutation — workspace+admin (`retentionDays:30`,`timezone:UTC`).
 
 ## Phase 2: Workspaces
 
-- [ ] 2.1 RED: unauth/inactive UNAUTHENTICATED|FORBIDDEN; foreign NOT_FOUND. (Isolation)
-- [ ] 2.2 GREEN: `workspaces.ts` list/get + `paginationOptsValidator`. (DTO parity)
-- [ ] 2.3 RED→GREEN: Workspace DTO/Page vs `api-contract.schemas.json` 1.0.0-mvp.
+- [x] 2.1 RED: unauth/inactive UNAUTHENTICATED|FORBIDDEN; foreign NOT_FOUND. (Isolation)
+- [x] 2.2 GREEN: `workspaces.ts` list/get + `paginationOptsValidator`. (DTO parity)
+- [x] 2.3 RED→GREEN: Workspace DTO/Page vs `api-contract.schemas.json` 1.0.0-mvp.
 
 ## Phase 3: Cameras
 

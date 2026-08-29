@@ -2,11 +2,11 @@ schema: spec-driven
 
 context: |
   Project: HackathonNextCaft
-  Backend: Convex TypeScript under backend/ with @convex-dev/agent and @ai-sdk/openai
+  Product backend: Convex TypeScript under convex-backend/ (distinct from Python model package backend/)
   Package manager: pnpm 11.11.0
   Quality: strict TypeScript, ESLint, Prettier, Jest
   Architecture: Convex functions, Convex persistence/realtime, Agent Component
-  Documentation: backend/docs/SENTRA-PRD.md, backend/docs/DOMAIN-DESIGN.md, backend/docs/USE-CASES.md, backend/docs/API-SITEMAP.md, backend/docs/BACKEND-TEST-CASES.md
+  Documentation: convex-backend/docs/SENTRA-PRD.md, DOMAIN-DESIGN.md, USE-CASES.md, API-SITEMAP.md, API-CONTRACT.md, BACKEND-TEST-CASES.md
   Artifact store: hybrid (OpenSpec files plus Engram observations)
   Execution: automatic; delivery strategy: ask-on-risk
 
@@ -33,7 +33,7 @@ rules:
     - Use RFC 2119 keywords and Given/When/Then scenarios.
     - Treat Convex public function validators and auth/ownership checks as API contracts.
   design:
-    - Read backend/convex/_generated/ai/guidelines.md before Convex changes.
+    - Read convex-backend/convex/_generated/ai/guidelines.md before Convex changes.
     - Document persistence, component, and authorization decisions with rationale.
   tasks:
     - Use vertical slices with isolated write surfaces and verifiable acceptance criteria.

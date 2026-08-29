@@ -8,14 +8,14 @@ The repository is not yet a Sentra backend. It is a small Convex TypeScript scaf
 The product documents are source material rather than implemented behavior. The OpenSpec config establishes hybrid persistence, strict TDD, Jest/ts-jest as the current runner, and Convex validation through `pnpm exec convex dev --once`. The existing test capability observation confirms unit tests and quality gates, but no `convex-test`/Vitest integration layer.
 
 ### Affected Areas
-- `backend/convex/schema.ts` — must grow from `threadMetadata` to explicit workspace-scoped Sentra records; avoid unbounded embedded arrays and add tenant-first indexes.
-- `backend/convex/convex.config.ts` — Agent Component remains mounted; Sentra components (if any) must be justified and mounted here.
-- `backend/convex/chat.ts` — currently public and unauthenticated; must either be secured/isolated or explicitly excluded from the product slice so it cannot be mistaken for production access control.
-- `backend/convex/validation.ts` — existing pure-helper seam; analogous normalized intake, category, confidence, timestamp, and command validators should remain pure where possible.
-- `backend/convex/http.ts` (not present) — required later for `/v1` and `/internal/v1/detections`; HTTP JSON must be narrowed from `unknown` and malformed bodies return 400.
-- `backend/convex/auth.config.ts` (not present) — required before Clerk-backed authorization can work; identity lookups must use `tokenIdentifier`, never a client-supplied user ID.
-- `backend/tests/validation.test.ts` and future `backend/convex/**/*.test.ts` — current Jest seam is unit-only; Convex behavior requires deliberate `convex-test` + Vitest setup per Convex guidance rather than claiming integration coverage.
-- `backend/docs/SENTRA-PRD.md`, `DOMAIN-DESIGN.md`, `USE-CASES.md`, `API-SITEMAP.md`, `BACKEND-TEST-CASES.md` — mutually reinforcing target contract, but several policy values are still unresolved (see Missing Decisions).
+- `convex-backend/convex/schema.ts` — must grow from `threadMetadata` to explicit workspace-scoped Sentra records; avoid unbounded embedded arrays and add tenant-first indexes.
+- `convex-backend/convex/convex.config.ts` — Agent Component remains mounted; Sentra components (if any) must be justified and mounted here.
+- `convex-backend/convex/chat.ts` — currently public and unauthenticated; must either be secured/isolated or explicitly excluded from the product slice so it cannot be mistaken for production access control.
+- `convex-backend/convex/validation.ts` — existing pure-helper seam; analogous normalized intake, category, confidence, timestamp, and command validators should remain pure where possible.
+- `convex-backend/convex/http.ts` (not present) — required later for `/v1` and `/internal/v1/detections`; HTTP JSON must be narrowed from `unknown` and malformed bodies return 400.
+- `convex-backend/convex/auth.config.ts` (not present) — required before Clerk-backed authorization can work; identity lookups must use `tokenIdentifier`, never a client-supplied user ID.
+- `convex-backend/tests/validation.test.ts` and future `convex-backend/convex/**/*.test.ts` — current Jest seam is unit-only; Convex behavior requires deliberate `convex-test` + Vitest setup per Convex guidance rather than claiming integration coverage.
+- `convex-backend/docs/SENTRA-PRD.md`, `DOMAIN-DESIGN.md`, `USE-CASES.md`, `API-SITEMAP.md`, `BACKEND-TEST-CASES.md` — mutually reinforcing target contract, but several policy values are still unresolved (see Missing Decisions).
 
 ### Product Intent and Bounded Scope
 **Intent:** prove a secure operational loop in which a normalized model observation becomes one durable detection and one grouped incident, then an authorized human can inspect and triage it without AI being treated as confirmation. Isolation, idempotency, auditability, and stable request/event identifiers are first-class acceptance criteria.
