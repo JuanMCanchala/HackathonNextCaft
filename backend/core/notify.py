@@ -56,8 +56,9 @@ def _post(url: str, body: bytes, content_type: str) -> tuple[bool, str]:
 
 def _caption(event, domain_label: str) -> str:
     v = event.verdict
+    donde = f" · {event.camera}" if event.camera else ""
     lines = [
-        f"INCIDENTE — {domain_label}",
+        f"INCIDENTE — {domain_label}{donde}",
         f"{v.incident_type} (confianza {int(v.confidence * 100)}%)",
         "",
         v.evidence,
@@ -107,9 +108,12 @@ class Notifier:
             middle = event.frames[len(event.frames) // 2]
             image_url = f"{config.PUBLIC_BASE_URL.rstrip('/')}/clips/{middle}"
 
+        # Sin saber de que camara viene, un guardia con varias no sabe adonde ir.
+        donde = f"\n_Camara:_ {event.camera}" if event.camera else ""
         message = (
             f"*Incidente detectado — {domain_label}*\n"
-            f"{v.incident_type} · confianza {int(v.confidence * 100)}%\n\n"
+            f"{v.incident_type} · confianza {int(v.confidence * 100)}%"
+            f"{donde}\n\n"
             f"{v.evidence}"
         )
         if v.recommended_action:
@@ -122,6 +126,7 @@ class Notifier:
             "event_id": event.id,
             "domain": event.domain,
             "domain_label": domain_label,
+            "camera": event.camera,
             "incident_type": v.incident_type,
             "confidence": v.confidence,
             "evidence": v.evidence,
