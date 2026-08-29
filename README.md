@@ -114,10 +114,23 @@ desarrollar sin gastar cuota.
 | Variable | Por defecto | Para que |
 |---|---|---|
 | `GEMINI_API_KEY` | — | Key de [AI Studio](https://aistudio.google.com/apikey) |
-| `GEMINI_MODEL` | `gemini-3.7-flash` | Modelo de la Etapa 2 |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Modelo de la Etapa 2 |
 | `SENTINEL_SOURCE` | `0` | Indice de webcam, ruta a un `.mp4` o URL RTSP |
 | `SENTINEL_DOMAIN` | `retail_theft` | Dominio inicial |
 | `SENTINEL_DEVICE` | `cuda` | `cuda` o `cpu` |
+| `SENTINEL_POSE_IMGSZ` | `480` | Resolucion de inferencia. Subir a 640 si sobra GPU |
+
+**Eleccion de modelo.** Medido sobre esta misma tarea con 10 frames:
+
+| Modelo | Latencia Etapa 2 |
+|---|---|
+| `gemini-3.5-flash-lite` | **4,4 s** |
+| `gemini-flash-lite-latest` | 5,5 s |
+| `gemini-3.7-flash` | 9,9 s |
+
+`flash-lite` va por defecto: es 2,2x mas rapido, la calidad del razonamiento
+aguanta, y en free tier tiene mas cuota diaria. Si algun veredicto dificil sale
+flojo, sube a `gemini-3.7-flash` y asume ~5 s mas por alerta.
 
 Poner `SENTINEL_SOURCE` a un archivo lo reproduce **en bucle**: es el plan B para
 la demo si la camara falla o la sala esta demasiado llena.
