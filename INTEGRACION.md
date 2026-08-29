@@ -27,8 +27,16 @@ idempotencia de Convex en vez de duplicar el incidente.
 
 ### Configuracion
 
+El deployment de desarrollo en la nube ya existe:
+
 ```
-CONVEX_INTAKE_URL=https://<deployment>.convex.site/intake
+https://adamant-mouse-956.convex.cloud     API
+https://adamant-mouse-956.convex.site      HTTP actions
+https://dashboard.convex.dev/d/adamant-mouse-956   panel
+```
+
+```
+CONVEX_INTAKE_URL=https://adamant-mouse-956.convex.site/intake
 CONVEX_INTAKE_TOKEN=<token del servicio interno>
 CONVEX_WORKSPACE_ID=<id del workspace>
 CONVEX_CAMERA_IDS={"Entrada":"j57abc...","Almacen":"j57def..."}
@@ -108,22 +116,28 @@ Requiere `pnpm@11.11.0` (declarado en `packageManager`).
 
 | | |
 |---|---|
-| 26 tests de logica pura | **pasan** (authz, dominio, errores, schema, validacion, workspaces) |
-| 5 suites que tocan la API generada | **no arrancan todavia** |
-| `pnpm typecheck` | falla por lo mismo |
+| Suite completa | **59 tests en 11 suites, todos pasan** |
+| `pnpm typecheck` | limpio |
+| Deployment dev en la nube | `adamant-mouse-956`, responde 200 |
+| Esquema, indices y funciones | desplegados |
 
-Las cinco que faltan importan `convex/_generated/`, que produce `convex codegen`
-y que **no esta en el repo** (correcto: es codigo generado). Generarlo pide un
-deployment:
+Las variables de Clerk estan puestas en el deployment con los valores que
+documenta `.env.example` (el issuer domain es configuracion publica, no un
+secreto). Si cambia la instancia de Clerk:
 
+```powershell
+cd convex-backend
+.
+ode_modules\.bin\convex env set CLERK_JWT_ISSUER_DOMAIN <nuevo>
+.
+ode_modules\.bin\convex env set CLERK_JWT_APPLICATION_ID convex
 ```
-✖ No CONVEX_DEPLOYMENT set, run `npx convex dev` to configure a Convex project
-```
 
-**Eso solo lo puede desbloquear quien tenga la cuenta de Convex.** Basta con
-correr `npx convex dev` una vez para dejar el proyecto configurado; a partir de
-ahi `pnpm test` y `pnpm typecheck` pasan enteros. Hasta entonces, las suites de
-detections, incidents, workspaces, chat y el harness se quedan sin poder correr.
+### Lo que falta para produccion
+
+`convex deploy` publica al deployment de **produccion** del proyecto, que aun no
+existe. Es un paso deliberado y no lo he dado: conviene decidir antes si la demo
+va contra dev (mas simple, ya funciona) o si hace falta prod de verdad.
 
 ### Dos arreglos ya aplicados
 
