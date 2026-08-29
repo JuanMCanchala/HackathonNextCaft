@@ -19,3 +19,5 @@ data/violence-mixed/
 data/bench_*.json
 data/scvd/
 data/propios/
+data/shoplifting/
+data/shoplifting-cctv/

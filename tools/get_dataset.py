@@ -24,6 +24,22 @@ VIDEO_EXT = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 # mayusculas y a cualquier profundidad del arbol, porque cada dataset de Kaggle
 # se empaqueta a su manera.
 RECIPES: dict[str, dict] = {
+    "shoplifting": {
+        "slug": "kipshidze/shoplifting-video-dataset",
+        "domain": "retail_theft",
+        "pos": ["shoplifting", "shop_lifting", "theft", "stealing", "suspicious"],
+        "neg": ["normal", "non_shoplifting", "nonshoplifting", "no_theft"],
+        "size": "761 MB",
+        "note": "Dos clases limpias: inspeccionar producto vs ocultarlo. Usabilidad 1.0.",
+    },
+    "shoplifting-cctv": {
+        "slug": "simuletic/cctv-shoplifting-detection-dataset-yolo-and-vlm",
+        "domain": "retail_theft",
+        "pos": ["shoplifting", "theft", "stealing", "suspicious", "positive"],
+        "neg": ["normal", "non_shoplifting", "nonshoplifting", "negative"],
+        "size": "505 MB",
+        "note": "CCTV, mayo 2026. Pensado para el mismo enfoque YOLO+VLM.",
+    },
     "scvd": {
         "slug": "toluwaniaremu/smartcity-cctv-violence-detection-dataset-scvd",
         "domain": "violence",
