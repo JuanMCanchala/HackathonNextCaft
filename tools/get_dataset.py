@@ -40,6 +40,14 @@ RECIPES: dict[str, dict] = {
         "size": "505 MB",
         "note": "Solo 8 videos y sujetos sinteticos: sirve de humo, no de medida.",
     },
+    "falls": {
+        "slug": "simuletic/cctv-incident-dataset-fall-and-lying-down-detection",
+        "domain": "fall_detection",
+        "pos": ["fall", "falls", "falling", "fallen", "lying", "lying_down", "incident"],
+        "neg": ["normal", "no_fall", "nofall", "walking", "standing"],
+        "size": "170 MB",
+        "note": "CCTV de caidas y personas en el suelo. Usabilidad 1.0.",
+    },
     "scvd": {
         "slug": "toluwaniaremu/smartcity-cctv-violence-detection-dataset-scvd",
         "domain": "violence",

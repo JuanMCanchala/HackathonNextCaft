@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Activity, AlertTriangle, CheckCircle2, Clock, Eye, HardHat, Layers,
-  Clock3, FileVideo, MessageSquare, Pause, PersonStanding, Play, Power, Radio,
-  Cctv,
-  Send, ShieldCheck, ShoppingBag, Swords, ThumbsDown, Upload,
-  ThumbsUp, Users, VideoOff, Zap,
+  AlertTriangle, CheckCircle2, Clock3, Eye, FileVideo, HardHat, Layers,
+  MessageSquare, Pause, PersonStanding, Play, Plus, Power, Radio, Send,
+  ShieldCheck, ShoppingBag, Swords, ThumbsDown, ThumbsUp, Upload, VideoOff,
+  X, Zap,
 } from 'lucide-react'
 
 const DOMAIN_ICONS = {
@@ -181,6 +180,63 @@ function CameraGrid({ cameras, running, paused, connected }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+function Checklist({ items, domain }) {
+  const [texto, setTexto] = useState('')
+  const [local, setLocal] = useState(items || [])
+  const input = useRef(null)
+
+  useEffect(() => { setLocal(items || []) }, [items])
+
+  const guardar = (siguiente) => {
+    setLocal(siguiente)
+    fetch(`/api/domain/${domain}/checklist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: siguiente }),
+    }).catch(() => {})
+  }
+
+  const anadir = () => {
+    const item = texto.trim()
+    if (!item || local.some((x) => x.toLowerCase() === item.toLowerCase())) return
+    setTexto('')
+    guardar([...local, item])
+  }
+
+  return (
+    <div className="checklist">
+      <div className="checklist-head">
+        <HardHat size={13} />
+        Equipo exigido en esta instalacion
+      </div>
+      <div className="chips">
+        {local.map((item) => (
+          <span className="chip" key={item}>
+            {item}
+            <button onClick={() => guardar(local.filter((x) => x !== item))} title="quitar">
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+        {local.length === 0 && (
+          <span className="chip vacio">sin equipo exigido; no se comprobara ninguno</span>
+        )}
+      </div>
+      <div className="ask">
+        <input
+          ref={input}
+          value={texto}
+          placeholder="casco, arnes, guantes, gafas…"
+          maxLength={40}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && anadir()}
+        />
+        <button onClick={anadir} disabled={!texto.trim()}><Plus size={12} /></button>
+      </div>
     </div>
   )
 }
@@ -377,6 +433,11 @@ function IncidentCard({ event, onFeedback }) {
       {verdict && (
         <>
           <div className="evidence">
+            {verdict.missing?.length > 0 && (
+              <div className="missing">
+                {verdict.missing.map((m) => <span key={m}>falta {m}</span>)}
+              </div>
+            )}
             {verdict.evidence}
             {verdict.incident && verdict.recommended_action && (
               <div className="action">
@@ -555,6 +616,10 @@ export default function App() {
               )
             })}
           </div>
+
+          {snapshot?.domain === 'industrial_safety' && (
+            <Checklist items={snapshot.checklist} domain={snapshot.domain} />
+          )}
 
           <Uploader jobs={jobs} />
         </section>

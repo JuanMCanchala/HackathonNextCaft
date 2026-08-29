@@ -23,11 +23,18 @@ vlm:
     - caida o accidente
     - trabajo conforme a norma
     - ninguno
+  # Equipo exigido en esta instalacion. Se edita desde el dashboard sin
+  # reiniciar: una obra pide casco y chaleco, una planta quimica anade
+  # gafas y guantes, y trabajo en altura exige arnes.
+  checklist:
+    - casco
+    - chaleco reflectante
+
   focus: >
-    Comprueba si la persona marcada lleva casco y chaleco reflectante visibles.
-    Si los lleva y no hay nada anomalo, responde que el trabajo es conforme.
-    Reporta incidente solo ante ausencia clara de EPP, presencia en una zona
-    marcada como restringida, o una caida.
+    Comprueba si la persona marcada lleva puesto el equipo exigido. Si lo
+    lleva completo y no hay nada anomalo, responde que el trabajo es
+    conforme. Reporta incidente solo ante ausencia clara de algun elemento,
+    presencia en una zona marcada como restringida, o una caida.
 
 # Poligonos en coordenadas normalizadas [0-1]. Vacio = sin zona restringida.
 zones: []

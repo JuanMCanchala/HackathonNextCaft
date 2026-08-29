@@ -113,6 +113,7 @@ def get_domains():
                 "threshold": d.threshold,
                 "weights": d.weights,
                 "taxonomy": d.taxonomy,
+                "checklist": d.checklist,
             }
             for d in p.domains.values()
         ],
@@ -126,6 +127,32 @@ def set_domain(domain_id: str):
         raise HTTPException(404, f"dominio desconocido: {domain_id}")
     _broadcast({"type": "state", "state": p.snapshot()})
     return {"active": p.domain.id}
+
+
+class Checklist(BaseModel):
+    items: list[str]
+
+
+@app.post("/api/domain/{domain_id}/checklist")
+def set_checklist(domain_id: str, body: Checklist):
+    """Equipo exigido en esta instalacion. Cada obra pide el suyo."""
+    p = pipe()
+    domain = p.domains.get(domain_id)
+    if domain is None:
+        raise HTTPException(404, f"dominio desconocido: {domain_id}")
+
+    limpio, vistos = [], set()
+    for raw in body.items:
+        item = " ".join(str(raw).split())[:40]
+        if item and item.lower() not in vistos:
+            vistos.add(item.lower())
+            limpio.append(item)
+    if len(limpio) > 12:
+        raise HTTPException(400, "maximo 12 elementos en el checklist")
+
+    domain.checklist = limpio
+    _broadcast({"type": "state", "state": p.snapshot()})
+    return {"domain": domain_id, "checklist": domain.checklist}
 
 
 @app.post("/api/pause")

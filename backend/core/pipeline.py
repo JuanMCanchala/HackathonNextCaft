@@ -472,6 +472,7 @@ class Pipeline:
             "domain": self._domain.id,
             "domain_label": self._domain.label,
             "threshold": self._domain.threshold,
+            "checklist": self._domain.checklist,
             "people": sum(c["people"] for c in cameras),
             "analyzing": self.analyzing,
             "offline": self.judge.offline,

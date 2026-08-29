@@ -32,6 +32,9 @@ class Domain:
     report: list[str] = field(default_factory=list)
     taxonomy: list[str] = field(default_factory=list)
     focus: str = ""
+    # Equipo que se espera ver puesto. Cada obra o planta exige el suyo, asi
+    # que se edita en caliente desde el dashboard en vez de vivir en el YAML.
+    checklist: list[str] = field(default_factory=list)
     zones: list[list[list[float]]] = field(default_factory=list)
 
     @classmethod
@@ -40,6 +43,7 @@ class Domain:
         vlm = raw.pop("vlm", {}) or {}
         raw["taxonomy"] = vlm.get("taxonomy", [])
         raw["focus"] = vlm.get("focus", "")
+        raw["checklist"] = list(vlm.get("checklist", []))
         known = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in raw.items() if k in known})
 

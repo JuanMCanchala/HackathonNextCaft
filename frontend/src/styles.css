@@ -657,3 +657,74 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--line);
   backdrop-filter: blur(6px);
 }
+
+/* ------------------------------------------------------------ equipo exigido */
+.checklist {
+  padding: 11px 12px 4px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.checklist-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 9px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  background: #21262e;
+  border: 1px solid var(--line);
+  color: #d3dae2;
+}
+
+.chip.vacio {
+  color: var(--dim);
+  font-style: italic;
+  padding-right: 9px;
+  border-style: dashed;
+}
+
+.chip button {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dim);
+}
+
+.chip button:hover { background: rgba(255, 90, 74, 0.18); color: var(--alert); }
+
+.checklist .ask { padding: 0 0 8px; }
+
+.missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+
+.missing span {
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(255, 90, 74, 0.16);
+  color: var(--alert);
+  border: 1px solid rgba(255, 90, 74, 0.3);
+}

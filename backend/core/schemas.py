@@ -25,6 +25,9 @@ class Verdict(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     evidence: str = Field(description="Que se observa exactamente en los frames")
     recommended_action: str = Field(description="Accion sugerida para el operador")
+    missing: list[str] = Field(
+        default=[],
+        description="Elementos del checklist que NO se ven puestos. Vacio si no aplica")
 
 
 class SignalSnapshot(BaseModel):

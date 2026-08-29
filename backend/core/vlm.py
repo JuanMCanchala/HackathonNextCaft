@@ -84,12 +84,34 @@ una conclusion. Tu trabajo es confirmarla o descartarla.
 
 QUE MIRAR
 {domain.focus.strip()}
-
+{_checklist_block(domain)}
 TAXONOMIA (elige exactamente uno para incident_type)
 {taxonomy}
 
 Devuelve incident=false y incident_type="ninguno" si lo que ves es
 comportamiento normal."""
+
+
+def _checklist_block(domain: Domain) -> str:
+    """Equipo exigido, inyectado en el prompt.
+
+    Va como lista explicita y no dentro del texto libre de `focus` porque cada
+    instalacion exige el suyo y se edita en caliente. Se pide devolver lo que
+    falta en `missing` para que el operador vea el elemento concreto, no un
+    generico "falta EPP".
+    """
+    if not domain.checklist:
+        return ""
+    items = "\n".join(f"- {item}" for item in domain.checklist)
+    return f"""
+EQUIPO EXIGIDO EN ESTA INSTALACION
+{items}
+
+Revisa uno por uno si el sujeto lo lleva PUESTO. Pon en `missing` solo los que
+veas claramente ausentes; si un elemento no se aprecia por el angulo o la
+distancia, no lo des por ausente y baja la confianza. Si `missing` queda vacio,
+no hay incidente por equipo.
+"""
 
 
 class VLMJudge:
