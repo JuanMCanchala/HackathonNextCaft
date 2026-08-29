@@ -9,6 +9,7 @@ import type { StatsRepository } from '../../data/repositories/stats.repository';
 import type { WorkspaceRepository } from '../../data/repositories/workspace.repository';
 
 export const SENTRA_API_BASE = new InjectionToken<string>('SENTRA_API_BASE');
+export const SENTRA_CONVEX_URL = new InjectionToken<string>('SENTRA_CONVEX_URL');
 
 export const AUTH_SERVICE = new InjectionToken<AuthService>('AuthService');
 export const REALTIME_SERVICE = new InjectionToken<RealtimeService>('RealtimeService');

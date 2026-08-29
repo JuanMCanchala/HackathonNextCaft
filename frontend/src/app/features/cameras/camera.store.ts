@@ -24,10 +24,11 @@ export class CameraStore {
 
   readonly page = computed(() => {
     const base = this._page();
+    const merged = this.realtime.mergeCameras(base.items);
     const highlighted = this.realtime.highlightedCameraIds();
     return {
       ...base,
-      items: [...base.items].sort((a, b) => {
+      items: [...merged].sort((a, b) => {
         const ha = highlighted.has(a.id) ? 0 : 1;
         const hb = highlighted.has(b.id) ? 0 : 1;
         return ha - hb;
@@ -112,5 +113,40 @@ export class CameraStore {
   async loadMore(): Promise<void> {
     if (!this._page().hasMore) return;
     await this.load(false);
+  }
+
+  async create(input: {
+    externalId: string;
+    label: string;
+    location?: string;
+  }): Promise<void> {
+    const workspaceId = this.workspace.workspaceId();
+    if (!workspaceId) return;
+
+    this._loading.set(true);
+    this._error.set(null);
+
+    try {
+      await this.repo.create({
+        workspaceId,
+        externalId: input.externalId.trim(),
+        label: input.label.trim(),
+        location: input.location?.trim() || null,
+      });
+      await this.load(true);
+    } catch (err) {
+      this._error.set(
+        err instanceof SentraHttpError
+          ? err.normalized
+          : {
+              code: 'INTERNAL_ERROR',
+              message: 'No se pudo registrar la cámara',
+              requestId: 'client',
+              httpStatus: 500,
+            },
+      );
+    } finally {
+      this._loading.set(false);
+    }
   }
 }

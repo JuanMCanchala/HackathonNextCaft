@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../core/permissions/permission.service';
+import { BACKEND_CAPABILITIES } from '../../core/config/backend-capabilities';
 import {
   allowedCommands,
   COMMAND_RULES,
@@ -16,23 +17,32 @@ import {
 } from '../../core/incidents/incident-state-machine';
 import type { IncidentState, OperationalSeverity } from '../../core/models/enums';
 import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
+import { HlmButtonDirective, HlmInputDirective } from '../../shared/ui/primitives';
 
 @Component({
   selector: 'app-transition-actions',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, HlmButtonDirective, HlmInputDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (!canTransition()) {
       <p class="text-xs text-[var(--sentra-text-low)]">Solo lectura (rol sin permisos de transición).</p>
     } @else if (commands().length === 0) {
-      <p class="text-xs text-[var(--sentra-text-mid)]">Estado terminal — sin acciones.</p>
+      <p class="text-xs text-[var(--sentra-text-mid)]">
+        @if (caps.profile === 'convex-mvp' && state() === 'triaged') {
+          Triage completado — ack/resolve/dismiss aún no están en el backend MVP.
+        } @else {
+          Estado terminal — sin acciones.
+        }
+      </p>
     } @else {
       <div class="flex flex-wrap gap-2">
         @for (cmd of commands(); track cmd) {
           <button
             type="button"
-            class="rounded border border-[var(--sentra-line)] px-3 py-1.5 text-sm text-[var(--sentra-text-hi)] hover:border-[var(--sentra-signal-cyan)]"
+            hlmBtn
+            variant="outline"
+            size="sm"
             [disabled]="busy()"
             (click)="onCommand(cmd)"
           >
@@ -42,11 +52,12 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
       </div>
 
       @if (pendingDismiss()) {
-        <div class="mt-3 space-y-2 rounded border border-[var(--sentra-line)] p-3">
-          <label class="block text-xs text-[var(--sentra-text-low)]">
+        <div class="sentra-inset mt-3 space-y-2">
+          <label class="block text-xs text-muted-foreground">
             Motivo (requerido para dismiss)
             <textarea
-              class="mt-1 w-full rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] p-2 text-sm"
+              hlmInput
+              class="mt-1 min-h-[4rem]"
               rows="2"
               maxlength="500"
               [ngModel]="dismissReason()"
@@ -55,7 +66,9 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
           </label>
           <button
             type="button"
-            class="rounded bg-[var(--sentra-severity-critical)] px-3 py-1.5 text-sm text-white disabled:opacity-40"
+            hlmBtn
+            variant="destructive"
+            size="sm"
             [disabled]="!dismissReason().trim() || busy()"
             (click)="confirmDismiss()"
           >
@@ -65,12 +78,13 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
       }
 
       @if (canSeverity()) {
-        <div class="mt-4 space-y-2 rounded border border-[var(--sentra-line)] p-3">
-          <div class="text-xs uppercase tracking-wide text-[var(--sentra-text-low)]">
+        <div class="sentra-inset mt-4 space-y-2">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground">
             Severidad operacional
           </div>
           <select
-            class="rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm"
+            hlmInput
+            class="h-9"
             [ngModel]="severityDraft()"
             (ngModelChange)="severityDraft.set($event)"
           >
@@ -79,7 +93,7 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
             }
           </select>
           <input
-            class="w-full rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm"
+            hlmInput
             placeholder="Motivo del cambio (requerido)"
             maxlength="500"
             [ngModel]="severityReason()"
@@ -87,7 +101,9 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
           />
           <button
             type="button"
-            class="rounded border border-[var(--sentra-line)] px-3 py-1.5 text-sm disabled:opacity-40"
+            hlmBtn
+            variant="secondary"
+            size="sm"
             [disabled]="!severityReason().trim() || severityDraft() === severity() || busy()"
             (click)="confirmSeverity()"
           >
@@ -100,6 +116,7 @@ import { OPERATIONAL_SEVERITIES } from '../../core/models/enums';
 })
 export class TransitionActionsComponent {
   private readonly permissions = inject(PermissionService);
+  readonly caps = inject(BACKEND_CAPABILITIES);
 
   readonly state = input.required<IncidentState>();
   readonly severity = input.required<OperationalSeverity>();
@@ -111,9 +128,13 @@ export class TransitionActionsComponent {
   readonly dismiss = output<string>();
   readonly severityChange = output<{ severity: OperationalSeverity; reason: string }>();
 
-  readonly commands = computed(() => allowedCommands(this.state()));
+  readonly commands = computed(() =>
+    allowedCommands(this.state(), this.caps.incidentCommands),
+  );
   readonly canTransition = computed(() => this.permissions.can('incident:transition'));
-  readonly canSeverity = computed(() => this.permissions.can('incident:severity'));
+  readonly canSeverity = computed(
+    () => this.caps.incidentSeverityPatch && this.permissions.can('incident:severity'),
+  );
 
   readonly severities = OPERATIONAL_SEVERITIES;
   readonly requiresReason = COMMAND_RULES.dismiss.requiresReason;

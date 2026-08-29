@@ -1,50 +1,62 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { LucideShieldAlert } from '@lucide/angular';
 import { REALTIME_SERVICE } from '../core/config/injection-tokens';
+import { cn } from '../shared/design/cn';
+import { HlmBadgeDirective, HlmButtonDirective } from '../shared/ui/primitives';
 
 @Component({
   selector: 'app-sidenav',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, LucideShieldAlert, HlmButtonDirective, HlmBadgeDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav
-      class="flex h-full w-[236px] shrink-0 flex-col gap-7 border-r border-[var(--sentra-line)] bg-[var(--sentra-bg-panel)] px-4 py-5"
+      class="flex h-screen w-64 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       aria-label="Navegación principal"
     >
-      <div class="flex items-center gap-2.5 px-1.5">
+      <div class="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
         <span
-          class="h-2.5 w-2.5 rounded-full bg-[var(--sentra-signal-cyan)]"
+          class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary shadow-inner"
           aria-hidden="true"
-        ></span>
-        <span class="font-display text-lg tracking-wide text-[var(--sentra-text-hi)]">
-          SENT<span class="text-[var(--sentra-signal-cyan)]">RA</span>
+        >
+          <svg lucideShieldAlert [size]="18" aria-hidden="true"></svg>
         </span>
-      </div>
-
-      <div>
-        <div class="mb-2 px-1.5 text-[10px] uppercase tracking-widest text-[var(--sentra-text-low)]">
-          Monitoreo
-        </div>
-        <div class="flex flex-col gap-0.5">
-          @for (link of links; track link.path) {
-            <a
-              [routerLink]="link.path"
-              routerLinkActive="bg-[var(--sentra-signal-cyan-dim)] text-[var(--sentra-signal-cyan)]"
-              [routerLinkActiveOptions]="{ exact: link.exact }"
-              class="rounded px-2.5 py-2 text-sm text-[var(--sentra-text-mid)] transition hover:bg-[var(--sentra-bg-panel-2)] hover:text-[var(--sentra-text-hi)]"
-            >
-              <span class="mr-2 text-[var(--sentra-text-low)]" aria-hidden="true">{{ link.icon }}</span>
-              {{ link.label }}
-            </a>
-          }
-        </div>
-      </div>
-
-      <div class="mt-auto space-y-1 px-1.5 text-[11px] text-[var(--sentra-text-low)]">
         <div>
-          Realtime:
-          <span class="font-mono text-[var(--sentra-text-mid)]">{{ realtime.status()() }}</span>
+          <div class="font-display text-lg font-semibold tracking-tight">
+            SENT<span class="text-primary">RA</span>
+          </div>
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">SOC Console</div>
+        </div>
+      </div>
+
+      <div class="flex-1 space-y-6 px-3 py-4">
+        <div>
+          <div class="mb-2 px-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Monitoreo
+          </div>
+          <div class="flex flex-col gap-1">
+            @for (link of links; track link.path) {
+              <a
+                hlmBtn
+                variant="ghost"
+                [routerLink]="link.path"
+                routerLinkActive="bg-sidebar-accent text-sidebar-accent-foreground"
+                [routerLinkActiveOptions]="{ exact: link.exact }"
+                [class]="navLinkClass"
+              >
+                <span class="w-4 text-center text-xs opacity-60" aria-hidden="true">{{ link.glyph }}</span>
+                {{ link.label }}
+              </a>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 border-t border-sidebar-border px-5 py-4 text-[11px] text-muted-foreground">
+        <div class="flex items-center justify-between">
+          <span>Realtime</span>
+          <span hlmBadge variant="muted" class="font-mono capitalize">{{ realtime.status()() }}</span>
         </div>
         <div>Operador · turno demo</div>
       </div>
@@ -53,11 +65,12 @@ import { REALTIME_SERVICE } from '../core/config/injection-tokens';
 })
 export class SidenavComponent {
   readonly realtime = inject(REALTIME_SERVICE);
+  readonly navLinkClass = cn('h-9 w-full justify-start px-3 text-muted-foreground hover:text-foreground');
 
   readonly links = [
-    { path: '/', label: 'Dashboard', icon: '◆', exact: true },
-    { path: '/cameras', label: 'Cámaras', icon: '▣', exact: false },
-    { path: '/incidents', label: 'Incidentes', icon: '≡', exact: false },
-    { path: '/analytics', label: 'Analítica', icon: '▤', exact: false },
+    { path: '/', label: 'Dashboard', glyph: '◆', exact: true },
+    { path: '/cameras', label: 'Cámaras', glyph: '▣', exact: false },
+    { path: '/incidents', label: 'Incidentes', glyph: '≡', exact: false },
+    { path: '/analytics', label: 'Analítica', glyph: '▤', exact: false },
   ] as const;
 }

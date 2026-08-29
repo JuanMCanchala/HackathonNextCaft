@@ -1,8 +1,19 @@
 import { Routes } from '@angular/router';
+import { catchAllRoute } from 'ngx-clerk';
 import { authGuard } from './core/permissions/auth.guard';
 import { workspaceGuard } from './core/permissions/workspace.guard';
 
 export const routes: Routes = [
+  {
+    matcher: catchAllRoute('sign-in'),
+    loadComponent: () =>
+      import('./features/auth/sign-in-page.component').then((m) => m.SignInPageComponent),
+  },
+  {
+    matcher: catchAllRoute('sign-up'),
+    loadComponent: () =>
+      import('./features/auth/sign-up-page.component').then((m) => m.SignUpPageComponent),
+  },
   {
     path: 'select-workspace',
     loadComponent: () =>

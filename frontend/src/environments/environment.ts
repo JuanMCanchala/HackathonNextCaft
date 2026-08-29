@@ -1,15 +1,19 @@
+import type { BackendProfile, DataSource } from '../app/core/config/backend-capabilities';
+import { clerkConfig } from './clerk.config';
+
+/**
+ * Perfil por defecto = Convex MVP.
+ * Mock local: dataSource 'http' + npm run mock:api
+ */
 export const environment = {
   production: false,
-  /**
-   * Integración backend real (cuando esté listo):
-   * 1. apiBase → URL del API HTTP /v1
-   * 2. useMockAuth → false + registrar ClerkAuthService en AUTH_SERVICE
-   * 3. useMockRealtime → false → usa ConvexRealtimeService (placeholder hasta Convex)
-   * 4. useMockRepositories → false (ya es el default; Api* apunta a apiBase)
-   */
+  backendProfile: 'convex-mvp' as BackendProfile,
+  dataSource: 'convex' as DataSource,
   apiBase: 'http://localhost:3000',
-  useMockAuth: true,
-  useMockRealtime: true,
-  /** false → Api*Repository against SENTRA_API_BASE (json-server). true → in-memory Mock*. */
-  useMockRepositories: false,
+  /** Local: http://127.0.0.1:3210 tras `pnpm dev` en convex-backend */
+  convexUrl: 'http://127.0.0.1:3210',
+  clerk: clerkConfig,
+  useMockAuth: false,
+  /** false = solo datos Convex; sin simulador de detecciones/cámaras fake */
+  useMockRealtime: false,
 };

@@ -7,6 +7,7 @@ import { LoadingStateComponent } from '../../shared/ui/loading-state.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { HlmBadgeDirective } from '../../shared/ui/primitives';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -20,13 +21,16 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     ErrorStateComponent,
     EmptyStateComponent,
     StatusBadgeComponent,
+    HlmBadgeDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-8">
       <div>
-        <h1 class="font-display text-2xl text-[var(--sentra-text-hi)]">Vista general</h1>
-        <p class="mt-1 text-sm text-[var(--sentra-text-mid)]">
+        <h1 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+          Vista general
+        </h1>
+        <p class="mt-1 text-sm text-muted-foreground">
           Stats últimas 24h · conectividad de cámaras · actividad reciente
         </p>
       </div>
@@ -38,32 +42,33 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       } @else {
         @if (store.displayStats(); as stats) {
           <section aria-label="KPIs">
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
               <app-kpi-card
                 label="Detectados"
                 [value]="stats.counts.incidentsByState.detected"
-                hint="por estado · 24h (+ live)"
+                hint="por estado · últimas 24h"
               />
               <app-kpi-card
                 label="Críticos"
                 [value]="stats.counts.incidentsBySeverity.critical"
-                hint="por severidad · 24h"
+                hint="por severidad · últimas 24h"
                 accent="var(--sentra-severity-critical)"
               />
               <app-kpi-card
                 label="Cámaras online"
                 [value]="stats.counts.camerasOnline + '/' + stats.counts.camerasTotal"
+                hint="conectividad · ahora"
               />
               <app-kpi-card
                 label="Detecciones"
                 [value]="stats.counts.detectionsTotal"
-                hint="total · 24h (+ live)"
+                hint="total · últimas 24h"
               />
             </div>
 
-            <div class="mt-4 flex flex-wrap gap-3 text-xs text-[var(--sentra-text-mid)]">
+            <div class="mt-4 flex flex-wrap gap-2">
               @for (state of stateEntries(stats); track state[0]) {
-                <span class="rounded border border-[var(--sentra-line)] px-2 py-1">
+                <span hlmBadge variant="outline" class="font-mono">
                   {{ state[0] }}: {{ state[1] }}
                 </span>
               }
@@ -72,12 +77,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         }
 
         <section aria-label="Conectividad">
-          <h2 class="mb-3 text-sm uppercase tracking-wide text-[var(--sentra-text-low)]">
+          <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Cámaras
           </h2>
-          <div class="mb-3 flex flex-wrap gap-2">
+          <div class="mb-4 flex flex-wrap gap-2">
             @for (pair of connectivityEntries(); track pair[0]) {
-              <div class="flex items-center gap-2 rounded border border-[var(--sentra-line)] px-2 py-1">
+              <div class="sentra-inset flex items-center gap-2 py-1.5">
                 <app-status-badge kind="connectivity" [value]="pair[0]" />
                 <span class="font-mono text-xs">{{ pair[1] }}</span>
               </div>
@@ -99,7 +104,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
         </section>
 
         <section aria-label="Actividad reciente">
-          <h2 class="mb-3 text-sm uppercase tracking-wide text-[var(--sentra-text-low)]">
+          <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Actividad reciente
           </h2>
           @if (store.recent().length === 0) {

@@ -1,30 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { NormalizedError } from '../../core/models/errors';
+import { HlmButtonDirective, HlmCardComponent, HlmCardContentComponent } from './primitives';
 
 @Component({
   selector: 'app-error-state',
   standalone: true,
+  imports: [HlmCardComponent, HlmCardContentComponent, HlmButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="flex flex-col items-center gap-3 rounded border border-[var(--sentra-severity-critical)]/40 bg-[var(--sentra-severity-critical-dim)] px-6 py-10 text-center"
+    <hlm-card
+      class="border-destructive/40 bg-destructive/10 shadow-none"
       role="alert"
     >
-      <div class="text-sm font-medium text-[var(--sentra-severity-critical)]">{{ heading() }}</div>
-      <p class="text-xs text-[var(--sentra-text-mid)]">{{ error().message }}</p>
-      @if (showRequestId()) {
-        <code class="font-mono text-[10px] text-[var(--sentra-text-low)]">
-          requestId: {{ error().requestId }}
-        </code>
-      }
-      <button
-        type="button"
-        class="mt-2 rounded border border-[var(--sentra-line)] px-3 py-1.5 text-xs text-[var(--sentra-text-hi)]"
-        (click)="retry.emit()"
-      >
-        Reintentar
-      </button>
-    </div>
+      <hlm-card-content class="flex flex-col items-center gap-3 py-10 text-center">
+        <div class="text-sm font-medium text-destructive">{{ heading() }}</div>
+        <p class="text-xs text-muted-foreground">{{ error().message }}</p>
+        @if (showRequestId()) {
+          <code class="font-mono text-[10px] text-muted-foreground">
+            requestId: {{ error().requestId }}
+          </code>
+        }
+        <button type="button" hlmBtn variant="outline" size="sm" class="mt-2" (click)="retry.emit()">
+          Reintentar
+        </button>
+      </hlm-card-content>
+    </hlm-card>
   `,
 })
 export class ErrorStateComponent {

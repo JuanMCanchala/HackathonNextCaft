@@ -1,3 +1,4 @@
+import type { CreateWorkspaceRequest } from '../../core/models/requests';
 import type { Page } from '../../core/models/page';
 import type { WorkspaceDetail, WorkspaceSummary } from '../../core/models/workspace';
 import { MOCK_WORKSPACES, getWorkspaceDetail } from '../mock/fixtures';
@@ -23,6 +24,23 @@ export class MockWorkspaceRepository implements WorkspaceRepository {
   get(id: string): Promise<WorkspaceDetail> {
     const detail = getWorkspaceDetail(id);
     if (!detail) return Promise.reject(new Error('NOT_FOUND'));
+    return Promise.resolve(detail);
+  }
+
+  create(request: CreateWorkspaceRequest): Promise<WorkspaceDetail> {
+    const now = new Date().toISOString();
+    const detail: WorkspaceDetail = {
+      id: `ws_${Date.now()}`,
+      name: request.name.trim(),
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      settings: {
+        groupingWindowSeconds: request.groupingWindowSeconds ?? 45,
+        retentionDays: request.retentionDays ?? 30,
+        timezone: request.timezone ?? 'America/Bogota',
+      },
+    };
     return Promise.resolve(detail);
   }
 }

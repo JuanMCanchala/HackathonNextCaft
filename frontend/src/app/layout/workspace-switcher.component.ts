@@ -1,18 +1,20 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { WorkspaceContextService } from '../core/workspace/workspace-context.service';
+import { HlmInputDirective } from '../shared/ui/primitives';
 
 @Component({
   selector: 'app-workspace-switcher',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, HlmInputDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (workspace.hasMultiple()) {
-      <label class="flex items-center gap-2 text-xs text-[var(--sentra-text-low)]">
+      <label class="flex items-center gap-2 text-xs text-muted-foreground">
         Workspace
         <select
-          class="rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1 text-sm text-[var(--sentra-text-hi)]"
+          hlmInput
+          class="h-8 min-w-[10rem]"
           [ngModel]="workspace.workspaceId()"
           (ngModelChange)="onChange($event)"
         >
@@ -22,7 +24,7 @@ import { WorkspaceContextService } from '../core/workspace/workspace-context.ser
         </select>
       </label>
     } @else if (workspace.activeWorkspace(); as ws) {
-      <span class="text-xs text-[var(--sentra-text-mid)]">{{ ws.name }}</span>
+      <span class="text-xs text-muted-foreground">{{ ws.name }}</span>
     }
   `,
 })

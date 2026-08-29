@@ -1,22 +1,43 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  HlmCardComponent,
+  HlmCardContentComponent,
+  HlmCardDescriptionComponent,
+  HlmCardHeaderComponent,
+} from './primitives';
 
 @Component({
   selector: 'app-kpi-card',
   standalone: true,
+  host: { class: 'block h-full' },
+  imports: [
+    HlmCardComponent,
+    HlmCardHeaderComponent,
+    HlmCardDescriptionComponent,
+    HlmCardContentComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel)] p-4"
-      [attr.aria-label]="label() + ': ' + value()"
-    >
-      <div class="text-xs uppercase tracking-wide text-[var(--sentra-text-low)]">{{ label() }}</div>
-      <div class="mt-2 font-display text-2xl text-[var(--sentra-text-hi)]" [style.color]="accent() || null">
-        {{ value() }}
-      </div>
-      @if (hint()) {
-        <div class="mt-1 font-mono text-[10px] text-[var(--sentra-text-low)]">{{ hint() }}</div>
-      }
-    </div>
+    <hlm-card class="flex h-full flex-col gap-3 p-5" [attr.aria-label]="label() + ': ' + value()">
+      <hlm-card-header class="gap-1 p-0">
+        <hlm-card-description class="text-[10px] uppercase tracking-widest">
+          {{ label() }}
+        </hlm-card-description>
+      </hlm-card-header>
+      <hlm-card-content class="flex flex-1 flex-col p-0">
+        <div
+          class="font-display text-3xl font-semibold tracking-tight text-foreground"
+          [style.color]="accent() || null"
+        >
+          {{ value() }}
+        </div>
+        <div class="mt-2 min-h-[14px] font-mono text-[10px] text-muted-foreground">
+          @if (hint()) {
+            {{ hint() }}
+          }
+        </div>
+      </hlm-card-content>
+    </hlm-card>
   `,
 })
 export class KpiCardComponent {

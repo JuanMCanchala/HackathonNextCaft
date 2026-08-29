@@ -1,16 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import type { OperationalSeverity } from '../../core/models/enums';
 import { severityLabel } from '../copy/labels';
+import { severityColor } from '../design/tokens';
+import { HlmBadgeDirective } from './primitives';
 
 @Component({
   selector: 'app-severity-badge',
   standalone: true,
+  imports: [HlmBadgeDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span
-      class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium uppercase tracking-wide"
+      hlmBadge
+      variant="outline"
+      class="uppercase tracking-wide"
       [style.color]="color()"
       [style.background]="bg()"
+      [style.borderColor]="color()"
       [attr.aria-label]="'Severidad ' + label()"
     >
       <span aria-hidden="true">{{ icon() }}</span>
@@ -22,17 +28,7 @@ export class SeverityBadgeComponent {
   readonly severity = input.required<OperationalSeverity>();
 
   readonly label = computed(() => severityLabel(this.severity()));
-
-  readonly color = computed(() => {
-    const map: Record<OperationalSeverity, string> = {
-      low: 'var(--sentra-severity-low)',
-      medium: 'var(--sentra-severity-medium)',
-      high: 'var(--sentra-severity-high)',
-      critical: 'var(--sentra-severity-critical)',
-    };
-    return map[this.severity()];
-  });
-
+  readonly color = computed(() => severityColor[this.severity()]);
   readonly bg = computed(() =>
     this.severity() === 'critical'
       ? 'var(--sentra-severity-critical-dim)'

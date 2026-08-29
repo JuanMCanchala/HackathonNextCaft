@@ -8,6 +8,7 @@
     "build": "pnpm typecheck",
     "codegen": "convex codegen",
     "dev": "convex dev",
+    "seed:bootstrap": "node scripts/run-seed-bootstrap.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
