@@ -12,7 +12,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:check": "eslint .",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,11 +30,13 @@
     "@types/node": "latest",
     "babel-jest": "^30.5.0",
     "convex-test": "^0.0.56",
+    "cross-env": "^7.0.3",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "jest": "latest",
     "prettier": "latest",
     "ts-jest": "latest",
+    "ts-node": "^10.9.2",
     "tsx": "latest",
     "typescript": "~5.9.3",
     "typescript-eslint": "latest"

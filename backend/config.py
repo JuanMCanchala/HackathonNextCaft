@@ -1,4 +1,5 @@
 """Configuracion global cargada desde .env."""
+import json
 import os
 from pathlib import Path
 
@@ -14,6 +15,18 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "").strip()
+
+# Puente hacia el backend de Convex (convex-backend/). Sin URL ni workspace
+# no se envia nada y el pipeline funciona igual que antes.
+CONVEX_INTAKE_URL = os.getenv("CONVEX_INTAKE_URL", "").strip()
+CONVEX_INTAKE_TOKEN = os.getenv("CONVEX_INTAKE_TOKEN", "").strip()
+CONVEX_WORKSPACE_ID = os.getenv("CONVEX_WORKSPACE_ID", "").strip()
+# Mapa "etiqueta de camara aqui" -> "id de camara alli", en JSON.
+#   CONVEX_CAMERA_IDS={"Entrada":"j57abc...","Almacen":"j57def..."}
+try:
+    CONVEX_CAMERA_IDS = json.loads(os.getenv("CONVEX_CAMERA_IDS", "{}") or "{}")
+except ValueError:
+    CONVEX_CAMERA_IDS = {}
 # Base publica para que quien reciba el webhook pueda bajar la evidencia.
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip()
 

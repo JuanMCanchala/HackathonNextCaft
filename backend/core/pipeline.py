@@ -24,6 +24,7 @@ from .buffer import RingBuffer
 from .capture import Camera
 from .events import EventStore, write_frames
 from .gate import Domain, Gate, load_domains
+from .intake import ConvexIntake
 from .notify import Notifier
 from .privacy import anonymize
 from .signals import TrackHistory
@@ -186,6 +187,7 @@ class Pipeline:
 
         self.judge = VLMJudge()
         self.notifier = Notifier()
+        self.intake = ConvexIntake()
         self.events = EventStore()
 
         self.feeds: dict[str, Feed] = {}
@@ -387,6 +389,7 @@ class Pipeline:
         # Un unico punto de salida: el aviso externo sale de aqui, asi cubre
         # tanto el directo como el analisis de un video subido.
         self.notifier.notify(event, self._domain.label)
+        self.intake.enviar(event, self._domain.id)
         if self.on_event:
             try:
                 self.on_event(event)
@@ -476,6 +479,7 @@ class Pipeline:
             "people": sum(c["people"] for c in cameras),
             "analyzing": self.analyzing,
             "offline": self.judge.offline,
+            "convex": self.intake.estado(),
             "alerts": {"channels": self.notifier.channels,
                        "sent": self.notifier.sent,
                        "error": self.notifier.last_error},
