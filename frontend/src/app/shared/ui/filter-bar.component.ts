@@ -100,7 +100,7 @@ export interface CameraFilterValue {
           </button>
         }
       } @else {
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4" [class.sm:grid-cols-2]="showCameraConnectivity()">
           <label class="block text-xs text-muted-foreground">
             Admin
             <select
@@ -115,20 +115,22 @@ export interface CameraFilterValue {
               }
             </select>
           </label>
-          <label class="block text-xs text-muted-foreground">
-            Conectividad
-            <select
-              hlmInput
-              class="mt-2"
-              [ngModel]="cameraFilters().connectivity"
-              (ngModelChange)="onCamera('connectivity', $event)"
-            >
-              <option value="">Todos</option>
-              @for (s of connectivities; track s) {
-                <option [value]="s">{{ s }}</option>
-              }
-            </select>
-          </label>
+          @if (showCameraConnectivity()) {
+            <label class="block text-xs text-muted-foreground">
+              Conectividad
+              <select
+                hlmInput
+                class="mt-2"
+                [ngModel]="cameraFilters().connectivity"
+                (ngModelChange)="onCamera('connectivity', $event)"
+              >
+                <option value="">Todos</option>
+                @for (s of connectivities; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
+              </select>
+            </label>
+          }
         </div>
       }
     </div>
@@ -143,6 +145,7 @@ export class FilterBarComponent {
     cameraId: '',
   });
   readonly cameraFilters = input<CameraFilterValue>({ adminStatus: '', connectivity: '' });
+  readonly showCameraConnectivity = input(true);
   readonly incidentChange = output<IncidentFilterValue>();
   readonly cameraChange = output<CameraFilterValue>();
 

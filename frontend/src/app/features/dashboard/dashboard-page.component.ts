@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { BACKEND_CAPABILITIES } from '../../core/config/backend-capabilities';
 import { DashboardStore } from './dashboard.store';
 import { KpiCardComponent } from '../../shared/ui/kpi-card.component';
 import { CameraCardComponent } from '../../shared/ui/camera-card.component';
@@ -31,7 +32,7 @@ import { HlmBadgeDirective } from '../../shared/ui/primitives';
           Vista general
         </h1>
         <p class="mt-1 text-sm text-muted-foreground">
-          Stats últimas 24h · conectividad de cámaras · actividad reciente
+          Resumen últimas 24h · cámaras · actividad reciente
         </p>
       </div>
 
@@ -55,9 +56,13 @@ import { HlmBadgeDirective } from '../../shared/ui/primitives';
                 accent="var(--sentra-severity-critical)"
               />
               <app-kpi-card
-                label="Cámaras online"
-                [value]="stats.counts.camerasOnline + '/' + stats.counts.camerasTotal"
-                hint="conectividad · ahora"
+                [label]="caps.cameraConnectivity ? 'Cámaras online' : 'Cámaras registradas'"
+                [value]="
+                  caps.cameraConnectivity
+                    ? stats.counts.camerasOnline + '/' + stats.counts.camerasTotal
+                    : stats.counts.camerasTotal
+                "
+                [hint]="caps.cameraConnectivity ? 'conectividad · ahora' : 'en este workspace'"
               />
               <app-kpi-card
                 label="Detecciones"
@@ -76,18 +81,20 @@ import { HlmBadgeDirective } from '../../shared/ui/primitives';
           </section>
         }
 
-        <section aria-label="Conectividad">
+        <section aria-label="Cámaras">
           <h2 class="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Cámaras
           </h2>
-          <div class="mb-4 flex flex-wrap gap-2">
-            @for (pair of connectivityEntries(); track pair[0]) {
-              <div class="sentra-inset flex items-center gap-2 py-1.5">
-                <app-status-badge kind="connectivity" [value]="pair[0]" />
-                <span class="font-mono text-xs">{{ pair[1] }}</span>
-              </div>
-            }
-          </div>
+          @if (caps.cameraConnectivity) {
+            <div class="mb-4 flex flex-wrap gap-2">
+              @for (pair of connectivityEntries(); track pair[0]) {
+                <div class="sentra-inset flex items-center gap-2 py-1.5">
+                  <app-status-badge kind="connectivity" [value]="pair[0]" />
+                  <span class="font-mono text-xs">{{ pair[1] }}</span>
+                </div>
+              }
+            </div>
+          }
 
           @if (store.empty()) {
             <app-empty-state title="Sin cámaras" description="No hay cámaras en este workspace." />
@@ -123,6 +130,7 @@ import { HlmBadgeDirective } from '../../shared/ui/primitives';
 })
 export class DashboardPageComponent implements OnInit {
   readonly store = inject(DashboardStore);
+  readonly caps = inject(BACKEND_CAPABILITIES);
 
   ngOnInit(): void {
     void this.store.load();

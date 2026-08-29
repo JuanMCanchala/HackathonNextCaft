@@ -74,6 +74,11 @@ export const routes: Routes = [
             (m) => m.AnalyticsPageComponent,
           ),
       },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./features/settings/settings-page.component').then((m) => m.SettingsPageComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

@@ -1,13 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ClerkUserButtonComponent } from 'ngx-clerk';
 import { WorkspaceContextService } from '../core/workspace/workspace-context.service';
-import { REALTIME_SERVICE } from '../core/config/injection-tokens';
 import { WorkspaceSwitcherComponent } from './workspace-switcher.component';
-import { HlmBadgeDirective } from '../shared/ui/primitives';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [WorkspaceSwitcherComponent, HlmBadgeDirective],
+  imports: [WorkspaceSwitcherComponent, ClerkUserButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header
@@ -20,33 +19,22 @@ import { HlmBadgeDirective } from '../shared/ui/primitives';
         }
       </div>
       <div class="flex items-center gap-3">
-        <span hlmBadge [variant]="statusVariant()" class="gap-2 capitalize">
-          <span class="h-1.5 w-1.5 rounded-full" [class]="statusDotClass()" aria-hidden="true"></span>
-          {{ realtime.status()() }}
-        </span>
-        <app-workspace-switcher />
+        @if (workspace.hasMultiple()) {
+          <app-workspace-switcher />
+        }
+        <clerk-user-button
+          [props]="{
+            userProfileMode: 'navigation',
+            userProfileUrl: '/app/settings',
+          }"
+        />
       </div>
     </header>
   `,
 })
 export class TopbarComponent {
   readonly workspace = inject(WorkspaceContextService);
-  readonly realtime = inject(REALTIME_SERVICE);
   readonly title = input('Centro de operaciones');
 
   readonly workspaceName = computed(() => this.workspace.activeWorkspace()?.name ?? null);
-
-  readonly statusVariant = computed(() => {
-    const s = this.realtime.status()();
-    if (s === 'live') return 'success' as const;
-    if (s === 'connecting') return 'warning' as const;
-    return 'muted' as const;
-  });
-
-  readonly statusDotClass = computed(() => {
-    const s = this.realtime.status()();
-    if (s === 'live') return 'bg-[var(--sentra-ok)] shadow-[0_0_8px_var(--sentra-ok)]';
-    if (s === 'connecting') return 'bg-[var(--sentra-warn)] animate-pulse';
-    return 'bg-muted-foreground';
-  });
 }

@@ -1,14 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideShieldAlert } from '@lucide/angular';
-import { REALTIME_SERVICE } from '../core/config/injection-tokens';
 import { cn } from '../shared/design/cn';
-import { HlmBadgeDirective, HlmButtonDirective } from '../shared/ui/primitives';
+import { HlmButtonDirective } from '../shared/ui/primitives';
 
 @Component({
   selector: 'app-sidenav',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, LucideShieldAlert, HlmButtonDirective, HlmBadgeDirective],
+  imports: [RouterLink, RouterLinkActive, LucideShieldAlert, HlmButtonDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav
@@ -51,20 +50,27 @@ import { HlmBadgeDirective, HlmButtonDirective } from '../shared/ui/primitives';
             }
           </div>
         </div>
-      </div>
 
-      <div class="space-y-2 border-t border-sidebar-border px-5 py-4 text-[11px] text-muted-foreground">
-        <div class="flex items-center justify-between">
-          <span>Realtime</span>
-          <span hlmBadge variant="muted" class="font-mono capitalize">{{ realtime.status()() }}</span>
+        <div>
+          <div class="mb-2 px-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            Sistema
+          </div>
+          <a
+            hlmBtn
+            variant="ghost"
+            routerLink="/app/settings"
+            routerLinkActive="bg-sidebar-accent text-sidebar-accent-foreground"
+            [class]="navLinkClass"
+          >
+            <span class="w-4 text-center text-xs opacity-60" aria-hidden="true">⚙</span>
+            Ajustes
+          </a>
         </div>
-        <div>Operador · turno demo</div>
       </div>
     </nav>
   `,
 })
 export class SidenavComponent {
-  readonly realtime = inject(REALTIME_SERVICE);
   readonly navLinkClass = cn('h-9 w-full justify-start px-3 text-muted-foreground hover:text-foreground');
 
   readonly links = [

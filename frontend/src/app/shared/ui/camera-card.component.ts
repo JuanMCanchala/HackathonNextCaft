@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { BACKEND_CAPABILITIES } from '../../core/config/backend-capabilities';
 import type { Camera } from '../../core/models/camera';
 import { adminStatusLabel } from '../copy/labels';
 import { StatusBadgeComponent } from './status-badge.component';
@@ -37,21 +38,28 @@ import { HlmBadgeDirective, HlmCardComponent, HlmCardContentComponent } from './
           <div class="font-medium text-foreground">{{ camera().label }}</div>
           <div class="text-xs text-muted-foreground">{{ camera().location || 'Sin ubicación' }}</div>
           <div class="flex flex-wrap items-center gap-2">
-            <app-status-badge kind="connectivity" [value]="camera().connectivity" />
+            @if (showConnectivity) {
+              <app-status-badge kind="connectivity" [value]="camera().connectivity" />
+            }
             <span class="text-[10px] text-muted-foreground">{{
               adminStatusLabel(camera().adminStatus)
             }}</span>
           </div>
-          <div class="font-mono text-[10px] text-muted-foreground">
-            HB {{ camera().lastHeartbeatAt || '—' }}
-          </div>
+          @if (showConnectivity) {
+            <div class="font-mono text-[10px] text-muted-foreground">
+              HB {{ camera().lastHeartbeatAt || '—' }}
+            </div>
+          }
         </hlm-card-content>
       </hlm-card>
     </a>
   `,
 })
 export class CameraCardComponent {
+  private readonly caps = inject(BACKEND_CAPABILITIES);
+
   readonly camera = input.required<Camera>();
   readonly highlighted = input(false);
+  readonly showConnectivity = this.caps.cameraConnectivity;
   protected readonly adminStatusLabel = adminStatusLabel;
 }

@@ -30,6 +30,8 @@ export interface BackendCapabilities {
   cameraCreate: boolean;
   /** workspaces.create — onboarding sin seed manual. */
   workspaceCreate: boolean;
+  /** Heartbeat / conectividad de cámaras (cameras.heartbeat en Convex). */
+  cameraConnectivity: boolean;
 }
 
 /** Alineado 1:1 con convex/incidents.ts (solo triage; ack/resolve/dismiss = stubs CONFLICT). */
@@ -67,6 +69,7 @@ export function capabilitiesFor(profile: BackendProfile): BackendCapabilities {
       richListFilters: false,
       cameraCreate: true,
       workspaceCreate: true,
+      cameraConnectivity: false,
     };
   }
   return {
@@ -80,6 +83,7 @@ export function capabilitiesFor(profile: BackendProfile): BackendCapabilities {
     richListFilters: true,
     cameraCreate: false,
     workspaceCreate: true,
+    cameraConnectivity: true,
   };
 }
 

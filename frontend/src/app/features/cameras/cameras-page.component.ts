@@ -102,6 +102,7 @@ import {
 
       <app-filter-bar
         mode="cameras"
+        [showCameraConnectivity]="caps.cameraConnectivity"
         [cameraFilters]="{
           adminStatus: store.adminStatus(),
           connectivity: store.connectivity(),
@@ -138,8 +139,8 @@ import {
 })
 export class CamerasPageComponent implements OnInit {
   readonly store = inject(CameraStore);
+  readonly caps = inject(BACKEND_CAPABILITIES);
   private readonly permissions = inject(PermissionService);
-  private readonly caps = inject(BACKEND_CAPABILITIES);
 
   readonly externalId = signal('');
   readonly label = signal('');
