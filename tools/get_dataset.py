@@ -24,19 +24,29 @@ VIDEO_EXT = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 # mayusculas y a cualquier profundidad del arbol, porque cada dataset de Kaggle
 # se empaqueta a su manera.
 RECIPES: dict[str, dict] = {
-    "rwf2000": {
-        "slug": "vulamnguyen/rwf2000",
+    "scvd": {
+        "slug": "toluwaniaremu/smartcity-cctv-violence-detection-dataset-scvd",
         "domain": "violence",
-        "pos": ["fight"],
-        "neg": ["nonfight", "non_fight"],
-        "note": "2000 clips de 5 s de camaras de vigilancia, balanceado 1000/1000.",
+        "pos": ["violence", "violent", "fight"],
+        "neg": ["normal", "nonviolence", "non_violence", "weaponized"],
+        "size": "1.1 GB",
+        "note": "CCTV de ciudad. El mas parecido a donde se desplegaria esto.",
     },
     "rlvs": {
         "slug": "mohamedmustafa/real-life-violence-situations-dataset",
         "domain": "violence",
         "pos": ["violence"],
         "neg": ["nonviolence", "non_violence"],
-        "note": "Real Life Violence Situations: 2000 clips, mas variados que RWF.",
+        "size": "3.8 GB",
+        "note": "2000 clips, el mas citado de los pequenos. Usabilidad 0.94.",
+    },
+    "rwf2000": {
+        "slug": "vulamnguyen/rwf2000",
+        "domain": "violence",
+        "pos": ["fight"],
+        "neg": ["nonfight", "non_fight"],
+        "size": "12.3 GB",
+        "note": "2000 clips de 5 s, balanceado, split predefinido. Mirror pesado.",
     },
     "ucfcrime": {
         "slug": "mission-ai/crimeucfdataset",
@@ -44,14 +54,8 @@ RECIPES: dict[str, dict] = {
         "pos": ["fighting", "assault", "robbery", "stealing", "shoplifting",
                 "burglary", "abuse"],
         "neg": ["normal", "normal_videos", "normal_videos_event", "testing_normal"],
-        "note": "UCF-Crime. CCTV de 240p: la pose degrada, esperalo en los numeros.",
-    },
-    "violence-mixed": {
-        "slug": "magicearth25/video-violence-detection-dataset",
-        "domain": "violence",
-        "pos": ["violence", "fight"],
-        "neg": ["nonviolence", "non_violence", "nonfight"],
-        "note": "Mezcla de fuentes; util como segundo conjunto de validacion.",
+        "size": "35 GB",
+        "note": "CCTV de 240p: la pose degrada y el recall cae. Enorme, ojo.",
     },
 }
 
@@ -156,8 +160,8 @@ def main() -> int:
     if args.list:
         print()
         for key, r in RECIPES.items():
-            print(f"  {key:<16} {r['slug']}")
-            print(f"  {'':<16} dominio={r['domain']}  {r['note']}")
+            print(f"  {key:<10} {r.get('size', '?'):>8}  {r['slug']}")
+            print(f"  {'':<10} {'':>8}  {r['note']}")
         print(f"\n  Uso: python -m tools.get_dataset rwf2000 --limit 100\n")
         return 0
 
