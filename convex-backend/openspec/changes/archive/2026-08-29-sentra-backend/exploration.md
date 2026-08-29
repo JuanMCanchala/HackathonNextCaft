@@ -2,13 +2,13 @@
 
 ### Apply progress (living)
 
-| Unit                      | Branch / PR                     | Status                                                        |
-| ------------------------- | ------------------------------- | ------------------------------------------------------------- |
-| 1 Foundation              | `backend-01-foundation` / PR #2 | Merged into `backend`                                         |
-| 2 Cameras + agent harness | `backend-02-cameras` / PR #3    | Merged into `backend`                                         |
-| 3 Domain + intake         | `backend-03-intake` / PR #4     | Merged into `backend`                                         |
-| 4 Incidents/DTO/chat      | `backend-04-incidents`          | In progress — list/get/triage + freeze stubs + chat isolation |
-| Tracker merge             | `backend` → `main`              | Pending after Unit 4 merge                                    |
+| Unit                      | Branch / PR                     | Status                |
+| ------------------------- | ------------------------------- | --------------------- |
+| 1 Foundation              | `backend-01-foundation` / PR #2 | Merged into `backend` |
+| 2 Cameras + agent harness | `backend-02-cameras` / PR #3    | Merged into `backend` |
+| 3 Domain + intake         | `backend-03-intake` / PR #4     | Merged into `backend` |
+| 4 Incidents/DTO/chat      | `backend-04-incidents` / PR #5  | Merged into `backend` |
+| Tracker merge             | `backend` → `main` / PR #1      | Closing / archive     |
 
 Package path: product Convex code lives in `convex-backend/` (not the Python `backend/` model package).
 
@@ -20,9 +20,11 @@ Sentra's five product documents describe a target-state, tenant-isolated inciden
 
 **In Unit 3 (merged):** pure `lib/domain/{normalize,group,severity,transition}`, `detections.acceptNormalized` internalMutation only, Phase 5b immutable/bounded-read hygiene.
 
-**In Unit 4 (this branch):** public `incidents.list`/`get`/`triage`, Incident Summary/Detail DTOs, ack/resolve/dismiss frozen stubs, chat explicitly isolated from Sentra authz, `initialSeverity` on incidents schema.
+**In Unit 4 (merged PR #5):** public `incidents.list`/`get`/`triage`, Incident Summary/Detail DTOs, ack/resolve/dismiss frozen stubs, chat explicitly isolated from Sentra authz, `initialSeverity` on incidents schema.
 
-Remaining after Unit 4 merge: draft tracker PR `backend` → `main` when ready.
+**Archive:** change closed 2026-08-29; capability specs synced to `openspec/specs/{workspace-authorization,camera-registration,detection-intake,incident-operations}/`.
+
+Out of slice (deferred): real ack/resolve/dismiss, heartbeats, API keys/webhooks, HTTP `/v1`, severity override, production Clerk secrets.
 
 The OpenSpec config establishes hybrid persistence, strict TDD, Jest/ts-jest as the current runner, and Convex validation through `pnpm exec convex dev --once`.
 
