@@ -64,6 +64,20 @@ export interface VisionEvent {
   source: string;
 }
 
+export interface VisionJob {
+  id: string;
+  name: string;
+  domain: string;
+  status: 'queued' | 'running' | 'done' | 'error';
+  progress: number;
+  frames: number;
+  triggers: number;
+  incidents: number;
+  duration: number;
+  elapsed: number;
+  error: string | null;
+}
+
 export interface VisionDemo {
   id: string;
   domain: string;
@@ -115,8 +129,37 @@ export class VisionService {
     return this.pedir<{ events: VisionEvent[] }>('/api/events');
   }
 
+  jobs(): Promise<{ jobs: VisionJob[] } | null> {
+    return this.pedir<{ jobs: VisionJob[] }>('/api/jobs');
+  }
+
   demos(): Promise<{ demos: VisionDemo[] } | null> {
     return this.pedir<{ demos: VisionDemo[] }>('/api/demos');
+  }
+
+  /**
+   * Sube un video y lo pasa por la misma cascada que el directo.
+   *
+   * No usa `pedir()` porque va como multipart y no como JSON, y porque aqui
+   * el motivo del fallo importa: si el formato no vale o el fichero pesa
+   * demasiado, quien lo sube tiene que saber por que.
+   */
+  async analizarVideo(archivo: File): Promise<{ ok: boolean; detalle: string }> {
+    const cuerpo = new FormData();
+    cuerpo.append('file', archivo);
+    try {
+      const respuesta = await fetch(`${this.base}/api/analyze`, {
+        method: 'POST',
+        body: cuerpo,
+      });
+      if (!respuesta.ok) {
+        const datos = (await respuesta.json().catch(() => null)) as { detail?: string } | null;
+        return { ok: false, detalle: datos?.detail ?? `Error ${respuesta.status}` };
+      }
+      return { ok: true, detalle: 'en cola' };
+    } catch {
+      return { ok: false, detalle: 'No se alcanza el motor de visión.' };
+    }
   }
 
   runDemo(domain: string, name: string): Promise<unknown> {

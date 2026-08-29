@@ -11,6 +11,7 @@ import {
   VisionService,
   type VisionDemo,
   type VisionEvent,
+  type VisionJob,
   type VisionState,
 } from '../../core/vision/vision.service';
 
@@ -134,6 +135,76 @@ import {
                 verificación con el modelo de visión.
               </p>
             }
+
+            <!-- Subir un video propio. Es lo que convence de que no hay
+                 trampa: el jurado puede traer su clip y verlo pasar por la
+                 misma cascada que el directo. -->
+            <div class="mt-5 border-t border-border pt-5">
+              <p class="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                O analizar tu propio vídeo
+              </p>
+              <div class="flex flex-wrap items-center gap-3">
+                <label
+                  class="cursor-pointer rounded-md border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  {{ archivo() ? archivo()!.name : 'Elegir vídeo…' }}
+                  <input
+                    type="file"
+                    class="hidden"
+                    accept="video/mp4,video/x-msvideo,video/quicktime,video/webm,.mkv"
+                    (change)="elegir($any($event).target)"
+                  />
+                </label>
+                <button
+                  type="button"
+                  hlmBtn
+                  variant="default"
+                  [disabled]="archivo() === null || subiendo()"
+                  (click)="subir()"
+                >
+                  {{ subiendo() ? 'Subiendo…' : 'Analizar' }}
+                </button>
+              </div>
+              @if (errorSubida()) {
+                <p class="mt-2 text-xs text-destructive">{{ errorSubida() }}</p>
+              }
+              <p class="mt-2 text-xs text-muted-foreground">
+                mp4, avi, mov, mkv o webm. Hasta 200 MB. Un clip de 10–15 segundos tarda
+                cerca de medio minuto: casi todo el tiempo se va en las verificaciones,
+                no en el filtro.
+              </p>
+            </div>
+
+            <!-- Sin esto se pulsa el botón y no ocurre nada visible durante
+                 medio minuto: el análisis va en segundo plano y la petición
+                 vuelve enseguida. La barra es también lo que hace entender la
+                 cascada, porque se ve cuántas veces dispara el filtro frente a
+                 cuántas confirma el verificador. -->
+            @if (trabajo(); as job) {
+              <div class="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+                <div class="flex flex-wrap items-baseline justify-between gap-3">
+                  <span class="font-mono text-xs text-foreground">{{ job.name }}</span>
+                  <span class="font-mono text-xs text-muted-foreground">
+                    {{ etiquetaJob(job) }}
+                  </span>
+                </div>
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    class="h-full rounded-full bg-primary transition-all duration-300"
+                    [style.width.%]="job.progress * 100"
+                  ></div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11px] text-muted-foreground">
+                  <span>{{ job.frames }} frames</span>
+                  <span>{{ job.triggers }} disparos del filtro</span>
+                  <span class="text-foreground">{{ job.incidents }} confirmados</span>
+                  <span>{{ job.elapsed.toFixed(1) }}s</span>
+                </div>
+                @if (job.error) {
+                  <p class="mt-2 text-xs text-destructive">{{ job.error }}</p>
+                }
+              </div>
+            }
           </div>
         </div>
 
@@ -243,6 +314,10 @@ export class LivePageComponent implements OnInit, OnDestroy {
   readonly eventos = signal<VisionEvent[]>([]);
   readonly demos = signal<VisionDemo[]>([]);
   readonly lanzando = signal<string | null>(null);
+  readonly trabajo = signal<VisionJob | null>(null);
+  readonly archivo = signal<File | null>(null);
+  readonly subiendo = signal(false);
+  readonly errorSubida = signal('');
   readonly stream = signal('');
 
   private temporizador?: ReturnType<typeof setInterval>;
@@ -266,12 +341,25 @@ export class LivePageComponent implements OnInit, OnDestroy {
   }
 
   private async refrescar(): Promise<void> {
-    const [estado, eventos] = await Promise.all([this.vision.state(), this.vision.events()]);
+    const [estado, eventos, trabajos] = await Promise.all([
+      this.vision.state(),
+      this.vision.events(),
+      this.vision.jobs(),
+    ]);
     if (estado !== null) {
       this.estado.set(estado);
     }
     if (eventos !== null) {
       this.eventos.set(eventos.events.slice(0, 6));
+    }
+    if (trabajos !== null) {
+      const job = trabajos.jobs[0] ?? null;
+      this.trabajo.set(job);
+      // El boton se libera cuando el motor termina, no cuando la peticion
+      // vuelve: encolar es inmediato, analizar no.
+      if (job === null || job.status === 'done' || job.status === 'error') {
+        this.lanzando.set(null);
+      }
     }
   }
 
@@ -302,6 +390,13 @@ export class LivePageComponent implements OnInit, OnDestroy {
     return Math.floor(evento.frames.length / 2);
   }
 
+  etiquetaJob(job: VisionJob): string {
+    if (job.status === 'queued') return 'en cola';
+    if (job.status === 'running') return `analizando ${Math.round(job.progress * 100)}%`;
+    if (job.status === 'error') return 'error';
+    return 'terminado';
+  }
+
   etiquetaEstado(evento: VisionEvent): string {
     if (evento.status === 'incident') return 'incidente';
     if (evento.status === 'dismissed') return 'descartado';
@@ -316,13 +411,31 @@ export class LivePageComponent implements OnInit, OnDestroy {
     return 'bg-primary/15 text-primary';
   }
 
+  elegir(input: HTMLInputElement): void {
+    this.archivo.set(input.files?.[0] ?? null);
+    this.errorSubida.set('');
+  }
+
+  async subir(): Promise<void> {
+    const archivo = this.archivo();
+    if (archivo === null) {
+      return;
+    }
+    this.subiendo.set(true);
+    this.errorSubida.set('');
+    const resultado = await this.vision.analizarVideo(archivo);
+    this.subiendo.set(false);
+    if (resultado.ok) {
+      this.archivo.set(null);
+      await this.refrescar();
+    } else {
+      this.errorSubida.set(resultado.detalle);
+    }
+  }
+
   async ejecutar(demo: VisionDemo): Promise<void> {
     this.lanzando.set(demo.id);
-    try {
-      await this.vision.runDemo(demo.domain, demo.name);
-      await this.refrescar();
-    } finally {
-      this.lanzando.set(null);
-    }
+    await this.vision.runDemo(demo.domain, demo.name);
+    await this.refrescar();
   }
 }

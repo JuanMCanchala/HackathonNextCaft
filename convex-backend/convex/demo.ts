@@ -120,6 +120,10 @@ export const publicIncidents = internalQuery({
     }
 
     return filas.map((fila) => ({
+      // El id viaja para poder enlazar a la ficha. No es un secreto: la ficha
+      // esta anclada al mismo workspace declarado, asi que tener el id no
+      // abre nada que esta lista no ensene ya.
+      id: fila._id as string,
       category: fila.category,
       severity: fila.severity,
       severityRuleVersion: fila.severityRuleVersion,
