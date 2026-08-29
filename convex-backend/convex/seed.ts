@@ -1,9 +1,10 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
-
-const DEFAULT_GROUPING_WINDOW_SECONDS = 45;
-const DEFAULT_RETENTION_DAYS = 30;
-const DEFAULT_TIMEZONE = "UTC";
+import {
+  DEFAULT_GROUPING_WINDOW_SECONDS,
+  DEFAULT_RETENTION_DAYS,
+  DEFAULT_TIMEZONE,
+} from "./lib/workspaceDefaults";
 
 /** Bootstrap one workspace and an active workspace_admin membership. */
 export const bootstrap = internalMutation({

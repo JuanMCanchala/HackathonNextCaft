@@ -237,4 +237,76 @@ describe("workspaces public API", () => {
       timezone: "UTC",
     });
   });
+
+  it("create throws UNAUTHENTICATED without identity", async () => {
+    const t = createTestBackend();
+    await expectApiError(t.mutation(api.workspaces.create, { name: "Ops" }), {
+      code: "UNAUTHENTICATED",
+    });
+  });
+
+  it("create rejects empty name", async () => {
+    const t = createTestBackend();
+    const asAdmin = t.withIdentity(ADMIN_IDENTITY);
+    await expectApiError(asAdmin.mutation(api.workspaces.create, { name: "  " }), {
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("authenticated user can create a workspace and becomes admin", async () => {
+    const t = createTestBackend();
+    const asAdmin = t.withIdentity(ADMIN_IDENTITY);
+    const detail = await asAdmin.mutation(api.workspaces.create, {
+      name: "  My Workspace  ",
+    });
+    assertWorkspaceDetail(detail);
+    expect(detail.name).toBe("My Workspace");
+    expect(detail.status).toBe("active");
+    expect(detail.settings).toEqual({
+      groupingWindowSeconds: 45,
+      retentionDays: 30,
+      timezone: "UTC",
+    });
+
+    const page = await asAdmin.query(api.workspaces.list, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    });
+    expect(page.items.some((item) => item.id === detail.id)).toBe(true);
+
+    const got = await asAdmin.query(api.workspaces.get, {
+      workspaceId: detail.id as Id<"workspaces">,
+    });
+    assertWorkspaceDetail(got);
+
+    const audits = await t.run(async (ctx) =>
+      ctx.db
+        .query("auditEntries")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", detail.id as Id<"workspaces">))
+        .collect(),
+    );
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toEqual(
+      expect.objectContaining({
+        action: "workspace.created",
+        actorTokenIdentifier: ADMIN_IDENTITY.tokenIdentifier,
+        actorRole: "workspace_admin",
+      }),
+    );
+  });
+
+  it("create honors optional settings overrides", async () => {
+    const t = createTestBackend();
+    const asViewer = t.withIdentity(VIEWER_IDENTITY);
+    const detail = await asViewer.mutation(api.workspaces.create, {
+      name: "Custom",
+      groupingWindowSeconds: 60,
+      retentionDays: 14,
+      timezone: "America/Bogota",
+    });
+    expect(detail.settings).toEqual({
+      groupingWindowSeconds: 60,
+      retentionDays: 14,
+      timezone: "America/Bogota",
+    });
+  });
 });
