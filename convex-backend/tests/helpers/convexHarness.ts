@@ -13,6 +13,7 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/agents.ts": () => import("../../convex/agents"),
   "../../convex/workspaces.ts": () => import("../../convex/workspaces"),
   "../../convex/cameras.ts": () => import("../../convex/cameras"),
+  "../../convex/detections.ts": () => import("../../convex/detections"),
   "../../convex/seed.ts": () => import("../../convex/seed"),
   "../../convex/lib/errors.ts": () => import("../../convex/lib/errors"),
   "../../convex/lib/authz.ts": () => import("../../convex/lib/authz"),
@@ -20,6 +21,14 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/lib/dto/workspaces.ts": () =>
     import("../../convex/lib/dto/workspaces"),
   "../../convex/lib/dto/cameras.ts": () => import("../../convex/lib/dto/cameras"),
+  "../../convex/lib/domain/normalize.ts": () =>
+    import("../../convex/lib/domain/normalize"),
+  "../../convex/lib/domain/group.ts": () =>
+    import("../../convex/lib/domain/group"),
+  "../../convex/lib/domain/severity.ts": () =>
+    import("../../convex/lib/domain/severity"),
+  "../../convex/lib/domain/transition.ts": () =>
+    import("../../convex/lib/domain/transition"),
   "../../convex/_generated/api.js": () => import("../../convex/_generated/api.js"),
   "../../convex/_generated/server.js": () =>
     import("../../convex/_generated/server.js"),

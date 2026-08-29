@@ -1,15 +1,8 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import {
-  listActiveMembershipsForIdentity,
-  requireActiveMembership,
-} from "./lib/authz";
-import {
-  toWorkspaceDetail,
-  toWorkspaceSummary,
-  type WorkspaceSummaryDto,
-} from "./lib/dto/workspaces";
+import { listActiveMembershipsForIdentity, requireActiveMembership } from "./lib/authz";
+import { toWorkspaceDetail, toWorkspaceSummary } from "./lib/dto/workspaces";
 import { throwApiError } from "./lib/errors";
 
 export const list = query({
@@ -18,20 +11,17 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const memberships = await listActiveMembershipsForIdentity(ctx);
-    const summaries: WorkspaceSummaryDto[] = [];
-    for (const membership of memberships) {
-      const workspace = await ctx.db.get(membership.workspaceId);
-      if (workspace !== null) {
-        summaries.push(toWorkspaceSummary(workspace));
-      }
-    }
+    const workspaces = await Promise.all(
+      memberships.map((membership) => ctx.db.get(membership.workspaceId)),
+    );
+    const summaries = workspaces.flatMap((workspace) =>
+      workspace === null ? [] : [toWorkspaceSummary(workspace)],
+    );
 
     // Membership-scoped list is bounded by the caller's memberships; map to
     // API-CONTRACT Page using cursor offsets over the authorized set.
     const start =
-      args.paginationOpts.cursor === null
-        ? 0
-        : Number.parseInt(args.paginationOpts.cursor, 10);
+      args.paginationOpts.cursor === null ? 0 : Number.parseInt(args.paginationOpts.cursor, 10);
     const safeStart = Number.isFinite(start) && start >= 0 ? start : 0;
     const end = safeStart + args.paginationOpts.numItems;
     const items = summaries.slice(safeStart, end);
