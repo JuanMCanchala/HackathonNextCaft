@@ -113,7 +113,7 @@ def _bbox_at(samples: list, ts: float, ratio: float):
 
 
 def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
-             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int, dict, int, float]:
+             use_vlm: bool, totals: Totals) -> tuple:
     """Devuelve (disparo, confirmado, n disparos, pico de senales, max personas).
 
     El pico por senal es lo que permite diagnosticar un recall bajo sin
@@ -132,6 +132,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     peaks: dict[str, float] = {}
     max_people = 0
     best_score = 0.0
+    best_libre = 0.0          # score si no existieran los `require`
     index = 0
 
     while True:
@@ -161,7 +162,9 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
                 continue
             values, score, fire = gate.evaluate(hist, ctx)
             if (hist.last_seen - hist.first_seen) >= gate.domain.min_track_seconds:
-                best_score = max(best_score, score)
+                best_libre = max(best_libre, score)
+                if gate.domain.meets_requirements(values):
+                    best_score = max(best_score, score)
             for name, val in values.items():
                 peaks[name] = max(peaks.get(name, 0.0), val)
             if fire and len(pending) < MAX_VLM_PER_CLIP:
@@ -178,7 +181,8 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     totals.triggers += len(pending)
 
     if not use_vlm or not pending:
-        return bool(pending), False, len(pending), peaks, max_people, best_score
+        return (bool(pending), False, len(pending), peaks, max_people,
+                best_score, best_libre)
 
     confirmed = False
     for values, t, ratio, samples in pending:
@@ -195,7 +199,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
             totals.vlm_errors += 1
             print(f"      aviso: fallo el VLM ({exc})", file=sys.stderr)
 
-    return True, confirmed, len(pending), peaks, max_people, best_score
+    return True, confirmed, len(pending), peaks, max_people, best_score, best_libre
 
 
 def collect(folder: Path, limit: int) -> list[tuple[Path, bool]]:
@@ -362,6 +366,7 @@ def main() -> int:
 
     stage1, stage2, totals = Counts(), Counts(), Totals()
     scores: list[tuple[float, bool]] = []
+    registros: list[dict] = []
     peaks_pos: list[dict] = []
     peaks_neg: list[dict] = []
     people_pos: list[int] = []
@@ -376,13 +381,20 @@ def main() -> int:
     for i, (path, expected) in enumerate(clips, start=1):
         gate = Gate(domains[args.domain])
         try:
-            fired, confirmed, n, peaks, people, score = run_clip(
-                path, tracker, gate, judge, use_vlm, totals)
+            (fired, confirmed, n, peaks, people,
+             score, libre) = run_clip(path, tracker, gate, judge, use_vlm, totals)
         except Exception as exc:                          # noqa: BLE001
             print(f"  [{i}/{len(clips)}] {path.name}: ERROR {exc}", file=sys.stderr)
             continue
 
         scores.append((score, expected))
+        # Una fila por clip: convierte cada pasada de 15 min en un dataset
+        # con el que probar cualquier diseno de gate sin volver a pasar video.
+        registros.append({"clip": path.name, "positivo": expected,
+                          "score": round(score, 4), "score_sin_require": round(libre, 4),
+                          "personas": people, "disparo": fired,
+                          "vlm": confirmed if use_vlm else None,
+                          "picos": {k: round(v, 4) for k, v in peaks.items()}})
         (peaks_pos if expected else peaks_neg).append(peaks)
         (people_pos if expected else people_neg).append(people)
 
@@ -413,6 +425,11 @@ def main() -> int:
             "vlm_errors": totals.vlm_errors,
             "avg_latency_ms": (sum(totals.latencies) // len(totals.latencies)
                                if totals.latencies else None),
+            "imgsz": args.imgsz, "conf": args.conf,
+            "threshold": domains[args.domain].threshold,
+            "weights": domains[args.domain].weights,
+            "require": domains[args.domain].require,
+            "clips_detalle": registros,
         }, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"  resultado guardado en {args.out}\n")
 
