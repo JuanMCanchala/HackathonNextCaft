@@ -69,6 +69,7 @@ export class SidenavComponent {
 
   readonly links = [
     { path: '/', label: 'Dashboard', glyph: '◆', exact: true },
+    { path: '/live', label: 'En vivo', glyph: '◉', exact: false },
     { path: '/cameras', label: 'Cámaras', glyph: '▣', exact: false },
     { path: '/incidents', label: 'Incidentes', glyph: '≡', exact: false },
     { path: '/analytics', label: 'Analítica', glyph: '▤', exact: false },

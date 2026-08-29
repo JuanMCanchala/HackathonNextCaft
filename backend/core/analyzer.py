@@ -17,7 +17,7 @@ import numpy as np
 
 from .. import config
 from .buffer import RingBuffer
-from .events import EventStore, write_frames
+from .events import EventStore, write_clip, write_frames
 from .gate import Domain, Gate
 from .privacy import anonymize
 from . import timeline as timeline_mod
@@ -204,6 +204,14 @@ class Analyzer:
                 event.latency_ms = latency
                 event.status = "incident" if verdict.incident else "dismissed"
                 event.frames = write_frames(frames, event.id)
+                # Mismo clip largo que en el directo. Va aqui tambien porque
+                # este es el camino que recorre la demo: enseñar una pelea
+                # guardada pasa por `analyze_file`, no por la camara, y sin
+                # esto el panel se quedaba solo con el fotograma.
+                event.clip = write_clip(
+                    [buffer.decode(payload) for _, payload in buffer.window(
+                        t - config.BUFFER_SECONDS, t + config.CLIP_POST_SECONDS)],
+                    event.id, fps=config.CLIP_FPS)
                 event.timeline = timeline_mod.build(
                     samples, domain, t,
                     t - config.CLIP_PRE_SECONDS, t + config.CLIP_POST_SECONDS)

@@ -36,6 +36,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'live',
+        loadComponent: () =>
+          import('./features/live/live-page.component').then((m) => m.LivePageComponent),
+      },
+      {
         path: 'cameras',
         loadComponent: () =>
           import('./features/cameras/cameras-page.component').then((m) => m.CamerasPageComponent),

@@ -35,7 +35,7 @@ const TIMEOUT_MS = 15_000;
  */
 function primeraFrase(d: DatosLlamada): string {
   return (
-    `Alerta de seguridad de Sentinel. Se ha detectado ${d.tipo} en la camara ${d.camara}, ` +
+    `Alerta de seguridad de Sentra. Se ha detectado ${d.tipo} en la camara ${d.camara}, ` +
     `a las ${d.hora}. Repito: ${d.tipo} en camara ${d.camara}.`
   );
 }

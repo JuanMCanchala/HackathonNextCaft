@@ -9,6 +9,7 @@ import {
   INCIDENT_REPOSITORY,
   REALTIME_SERVICE,
   SENTRA_API_BASE,
+  VISION_BASE,
   SENTRA_CONVEX_URL,
   STATS_REPOSITORY,
   WORKSPACE_REPOSITORY,
@@ -93,6 +94,7 @@ export function provideSentraCore(): EnvironmentProviders {
 
   return makeEnvironmentProviders([
     { provide: SENTRA_API_BASE, useValue: environment.apiBase },
+    { provide: VISION_BASE, useValue: environment.visionBase },
     { provide: SENTRA_CONVEX_URL, useValue: environment.convexUrl },
     { provide: BACKEND_CAPABILITIES, useValue: caps },
 

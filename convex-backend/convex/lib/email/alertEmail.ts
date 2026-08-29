@@ -202,10 +202,24 @@ export function cuerpoAviso(datos: DatosAviso): string {
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="color:${sev.color};font-size:11px;font-weight:700;letter-spacing:.13em;
-                       text-transform:uppercase;${MONO}">${escapar(sev.texto)}</td>
-            <td align="right" style="color:#9AA1AD;font-size:11px;letter-spacing:.08em;
-                       text-transform:uppercase;${MONO}">Sentinel</td>
+            <!-- La marca va con un cuadro solido delante en vez de un logo en
+                 imagen: casi todos los clientes bloquean imagenes remotas hasta
+                 que el lector lo autoriza, y un remitente que aparece sin
+                 identificar en un aviso de seguridad se lee como spam. -->
+            <td style="${SANS}">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="16" bgcolor="#14161A"
+                      style="width:16px;height:16px;border-radius:4px;font-size:0;line-height:0">
+                    &nbsp;
+                  </td>
+                  <td style="padding-left:8px;color:#14161A;font-size:13px;font-weight:700;
+                             letter-spacing:.14em;${SANS}">SENTRA</td>
+                </tr>
+              </table>
+            </td>
+            <td align="right" style="color:${sev.color};font-size:11px;font-weight:700;
+                       letter-spacing:.13em;text-transform:uppercase;${MONO}">${escapar(sev.texto)}</td>
           </tr>
         </table>
 

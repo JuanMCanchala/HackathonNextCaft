@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
         pipeline.stop()
 
 
-app = FastAPI(title="Sentinel", lifespan=lifespan)
+app = FastAPI(title="Sentra", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],

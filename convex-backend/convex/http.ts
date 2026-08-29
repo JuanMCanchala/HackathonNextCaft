@@ -184,12 +184,15 @@ function pagina(filas: Array<Record<string, unknown>> | null): string {
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sentinel — incidentes registrados</title>
+<title>Sentra — incidentes registrados</title>
 <style>
 :root{color-scheme:dark}
 body{margin:0;background:#0b0d10;color:#e8ebef;
  font:14px/1.5 Inter,-apple-system,Segoe UI,Roboto,sans-serif;padding:32px 20px}
 main{max-width:820px;margin:0 auto}
+.marca{display:flex;align-items:center;gap:8px;margin:0 0 18px;
+ font-size:12.5px;font-weight:700;letter-spacing:.15em;color:#e8ebef}
+.marca .glifo{width:13px;height:13px;border-radius:3px;background:#ff5a4a}
 h1{font-size:19px;margin:0 0 4px;letter-spacing:-.01em}
 p.sub{margin:0 0 22px;color:#5d6673;font-size:12.5px}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -207,8 +210,9 @@ td{padding:11px 10px;border-bottom:1px solid #1b2027;vertical-align:middle}
 footer{margin-top:26px;color:#3d4550;font-size:11px}
 </style></head>
 <body><main>
+<p class="marca"><span class="glifo"></span>SENTRA</p>
 <h1>Incidentes registrados</h1>
-<p class="sub">Confirmados por el analisis de video y guardados en Convex. Vista publica de solo lectura.</p>
+<p class="sub">Confirmados por el analisis de video. Vista publica de solo lectura.</p>
 <table>
 <thead><tr><th>severidad</th><th>tipo</th><th>camara</th><th>estado</th><th>detectado</th></tr></thead>
 <tbody>
@@ -419,7 +423,16 @@ body{margin:0;background:var(--fondo);color:var(--texto);
 .cinta{height:5px;background:var(--sev)}
 .envoltura{max-width:1240px;margin:0 auto;padding:0 20px}
 
-header{padding:30px 0 24px}
+/* La marca abre la pagina y no compite con el titular: el incidente manda,
+   pero quien llega desde un correo tiene que saber de quien es esto. */
+.marca{display:flex;align-items:center;gap:9px;padding:22px 0 0;
+  font:700 13px/1 var(--display);letter-spacing:.15em;color:var(--texto)}
+.marca .glifo{width:15px;height:15px;border-radius:4px;background:var(--sev);flex:none}
+.marca em{font:400 12px/1 var(--display);letter-spacing:0;color:var(--tenue);
+  font-style:normal;margin-left:4px}
+@media (max-width:560px){.marca em{display:none}}
+
+header{padding:22px 0 24px}
 .tag{display:inline-flex;align-items:center;gap:8px;font:600 11px/1 var(--mono);
   letter-spacing:.16em;text-transform:uppercase;color:var(--sev)}
 .tag i{width:7px;height:7px;border-radius:50%;background:currentColor;
@@ -521,6 +534,10 @@ a:focus-visible,video:focus-visible,button:focus-visible,input:focus-visible{
 <body>
 <div class="cinta"></div>
 <div class="envoltura">
+  <div class="marca">
+    <span class="glifo"></span>SENTRA
+    <em>deteccion de incidentes con verificacion por video</em>
+  </div>
   <header>
     <span class="tag"><i></i>${escapar(paleta.texto)}</span>
     <h1>${escapar(tipo)}</h1>

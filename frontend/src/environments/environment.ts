@@ -11,6 +11,12 @@ export const environment = {
   dataSource: 'convex' as DataSource,
   apiBase: 'http://localhost:3000',
   /**
+   * Motor de vision, que corre en el equipo de la demo. Convex guarda los
+   * incidentes confirmados; esto es el video entrando y el gate trabajando,
+   * y solo existe mientras el motor esta levantado.
+   */
+  visionBase: 'http://localhost:8000',
+  /**
    * Apunta al despliegue de produccion, no al Convex local.
    *
    * El pipeline de vision escribe en produccion (CONVEX_INTAKE_URL en el .env
