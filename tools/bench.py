@@ -97,13 +97,15 @@ def main() -> int:
         print(f"dominio desconocido: {args.domain}. Hay: {list(domains)}")
         return 2
 
-    clips = sorted(p for p in args.folder.glob("*.mp4")
-                   if p.stem.startswith(("pos_", "neg_")))
+    exts = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+    clips = sorted(p for p in args.folder.iterdir()
+                   if p.suffix.lower() in exts and p.stem.startswith(("pos_", "neg_")))
     if not clips:
-        print(f"No hay clips pos_*.mp4 / neg_*.mp4 en {args.folder}")
+        print(f"No hay clips pos_* / neg_* en {args.folder}")
         return 2
 
-    tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE)
+    tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
+                          imgsz=config.POSE_IMGSZ)
     judge = VLMJudge()
     use_vlm = not args.no_vlm and not judge.offline
 

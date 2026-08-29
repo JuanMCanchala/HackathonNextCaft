@@ -36,7 +36,8 @@ class Pipeline:
         active = config.DOMAIN if config.DOMAIN in self.domains else next(iter(self.domains))
 
         self.gate = Gate(self.domains[active])
-        self.tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE)
+        self.tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
+                                   imgsz=config.POSE_IMGSZ)
         self.judge = VLMJudge()
         self.events = EventStore()
         self.buffer = RingBuffer(config.BUFFER_SECONDS)

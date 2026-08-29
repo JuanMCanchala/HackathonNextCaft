@@ -15,7 +15,7 @@ def _resolve(source: str):
 
 
 class Camera:
-    def __init__(self, source: str, width: int = 1280, height: int = 720):
+    def __init__(self, source: str, width: int = 960, height: int = 540):
         self.source = _resolve(source)
         self.is_file = isinstance(self.source, str) and "://" not in self.source
         self.width = width

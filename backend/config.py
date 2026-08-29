@@ -15,6 +15,10 @@ DOMAIN = os.getenv("SENTINEL_DOMAIN", "retail_theft").strip()
 DEVICE = os.getenv("SENTINEL_DEVICE", "cuda").strip()
 
 POSE_MODEL = os.getenv("SENTINEL_POSE_MODEL", "yolo11n-pose.pt").strip()
+# Resolucion de inferencia. 480 mantiene FPS utiles en CPU; 640 afina si hay GPU.
+POSE_IMGSZ = int(os.getenv("SENTINEL_POSE_IMGSZ", "480"))
+# Resolucion de inferencia. 480 mantiene FPS utiles en CPU; 640 afina en GPU.
+POSE_IMGSZ = int(os.getenv("SENTINEL_POSE_IMGSZ", "480"))
 
 DOMAINS_DIR = ROOT / "backend" / "domains"
 DATA_DIR = ROOT / "data"

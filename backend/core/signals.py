@@ -146,10 +146,16 @@ class TrackHistory:
         return [s for s in self.samples if lo <= s.t <= hi]
 
     def speed(self, window: list[Sample]) -> float:
-        """Velocidad pico de keypoints, en largos-de-torso por segundo."""
+        """Velocidad de keypoints en largos-de-torso por segundo.
+
+        Percentil 75, no el maximo. Con el maximo bastaba un solo frame con un
+        keypoint mal estimado para saturar la senal, y a FPS bajos eso pasa
+        constantemente: una persona parada marcaba movimiento 1.0. El p75 sigue
+        capturando un golpe (que dura varios frames) y descarta el pico aislado.
+        """
         if len(window) < 2:
             return 0.0
-        peak = 0.0
+        speeds = []
         for a, b in zip(window, window[1:]):
             dt = b.t - a.t
             if dt <= 1e-3:
@@ -159,8 +165,10 @@ class TrackHistory:
                 d = float(np.linalg.norm(b.kp[mask, :2] - a.kp[mask, :2], axis=1).mean())
             else:
                 d = float(np.linalg.norm(b.center - a.center))
-            peak = max(peak, d / dt / max(b.scale, 1.0))
-        return peak
+            speeds.append(d / dt / max(b.scale, 1.0))
+        if not speeds:
+            return 0.0
+        return float(np.percentile(speeds, 75))
 
 
 # --------------------------------------------------------------------------
