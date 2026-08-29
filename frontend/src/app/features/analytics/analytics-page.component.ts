@@ -5,30 +5,46 @@ import { StatsStore, type StatsPreset } from './stats.store';
 import { KpiCardComponent } from '../../shared/ui/kpi-card.component';
 import { LoadingStateComponent } from '../../shared/ui/loading-state.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
+import {
+  HlmButtonDirective,
+  HlmCardComponent,
+  HlmCardContentComponent,
+  HlmCardHeaderComponent,
+  HlmCardTitleComponent,
+} from '../../shared/ui/primitives';
 
 @Component({
   selector: 'app-analytics-page',
   standalone: true,
   providers: [StatsStore],
-  imports: [NgApexchartsModule, KpiCardComponent, LoadingStateComponent, ErrorStateComponent],
+  imports: [
+    NgApexchartsModule,
+    KpiCardComponent,
+    LoadingStateComponent,
+    ErrorStateComponent,
+    HlmButtonDirective,
+    HlmCardComponent,
+    HlmCardHeaderComponent,
+    HlmCardTitleComponent,
+    HlmCardContentComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 class="font-display text-2xl text-[var(--sentra-text-hi)]">Analítica</h1>
-          <p class="mt-1 text-sm text-[var(--sentra-text-mid)]">
-            Solo métricas de StatsResponse · sin falsos positivos ni tiempos
+          <h1 class="font-display text-2xl font-semibold tracking-tight text-foreground">Analítica</h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            KPIs derivados de incidentes (Convex MVP no expone GET /stats)
           </p>
         </div>
         <div class="flex gap-2">
           @for (p of presets; track p) {
             <button
               type="button"
-              class="rounded border px-3 py-1.5 text-sm"
-              [class.border-[var(--sentra-signal-cyan)]]="store.preset() === p"
-              [class.text-[var(--sentra-signal-cyan)]]="store.preset() === p"
-              [class.border-[var(--sentra-line)]]="store.preset() !== p"
+              hlmBtn
+              size="sm"
+              [variant]="store.preset() === p ? 'default' : 'outline'"
               (click)="store.setPreset(p)"
             >
               {{ p }}
@@ -42,7 +58,7 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
       } @else if (store.error(); as err) {
         <app-error-state [error]="err" (retry)="store.load()" />
       } @else if (store.stats(); as stats) {
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-3">
           <app-kpi-card label="Detecciones" [value]="stats.counts.detectionsTotal" />
           <app-kpi-card
             label="Cámaras online"
@@ -56,27 +72,39 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
-          <div class="rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel)] p-4">
-            <h2 class="mb-3 text-sm text-[var(--sentra-text-low)]">Incidentes por estado</h2>
-            <apx-chart
-              [series]="stateSeries()"
-              [chart]="barChart"
-              [xaxis]="stateXaxis()"
-              [plotOptions]="plotOptions"
-              [dataLabels]="dataLabels"
-              [colors]="['#22e0ff']"
-            />
-          </div>
-          <div class="rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel)] p-4">
-            <h2 class="mb-3 text-sm text-[var(--sentra-text-low)]">Incidentes por severidad</h2>
-            <apx-chart
-              [series]="severitySeries()"
-              [chart]="donutChart"
-              [labels]="severityLabels"
-              [legend]="legend"
-              [colors]="severityColors"
-            />
-          </div>
+          <hlm-card class="p-4">
+            <hlm-card-header class="p-0 pb-3">
+              <hlm-card-title class="text-sm font-medium text-muted-foreground">
+                Incidentes por estado
+              </hlm-card-title>
+            </hlm-card-header>
+            <hlm-card-content class="p-0">
+              <apx-chart
+                [series]="stateSeries()"
+                [chart]="barChart"
+                [xaxis]="stateXaxis()"
+                [plotOptions]="plotOptions"
+                [dataLabels]="dataLabels"
+                [colors]="['#22e0ff']"
+              />
+            </hlm-card-content>
+          </hlm-card>
+          <hlm-card class="p-4">
+            <hlm-card-header class="p-0 pb-3">
+              <hlm-card-title class="text-sm font-medium text-muted-foreground">
+                Incidentes por severidad
+              </hlm-card-title>
+            </hlm-card-header>
+            <hlm-card-content class="p-0">
+              <apx-chart
+                [series]="severitySeries()"
+                [chart]="donutChart"
+                [labels]="severityLabels"
+                [legend]="legend"
+                [colors]="severityColors"
+              />
+            </hlm-card-content>
+          </hlm-card>
         </div>
       }
     </div>

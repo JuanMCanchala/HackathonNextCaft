@@ -5,6 +5,7 @@ import { IncidentCardComponent } from '../../shared/ui/incident-card.component';
 import { LoadingStateComponent } from '../../shared/ui/loading-state.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
+import { HlmButtonDirective } from '../../shared/ui/primitives';
 import type { IncidentState, OperationalSeverity } from '../../core/models/enums';
 
 @Component({
@@ -17,18 +18,17 @@ import type { IncidentState, OperationalSeverity } from '../../core/models/enums
     LoadingStateComponent,
     ErrorStateComponent,
     EmptyStateComponent,
+    HlmButtonDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       <div>
-        <h1 class="font-display text-2xl text-[var(--sentra-text-hi)]">Incidentes</h1>
-        <p class="mt-1 text-sm text-[var(--sentra-text-mid)]">
-          Filtros = ListIncidentsQuery · paginación por cursor
+        <h1 class="font-display text-2xl font-semibold tracking-tight text-foreground">Incidentes</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Filtros · paginación por cursor
           @if (store.latestLiveId()) {
-            <span class="ml-2 text-[var(--sentra-signal-cyan)]">
-              · live {{ store.latestLiveId() }}
-            </span>
+            <span class="ml-2 text-primary">· live {{ store.latestLiveId() }}</span>
           }
         </p>
       </div>
@@ -48,11 +48,7 @@ import type { IncidentState, OperationalSeverity } from '../../core/models/enums
           }
         </div>
         @if (store.page().hasMore) {
-          <button
-            type="button"
-            class="rounded border border-[var(--sentra-line)] px-4 py-2 text-sm"
-            (click)="store.loadMore()"
-          >
+          <button type="button" hlmBtn variant="outline" (click)="store.loadMore()">
             Cargar más
           </button>
         }

@@ -4,6 +4,10 @@ const NON_ACCUSATORY: Record<string, string> = {
   'posible altercado': 'Posible altercado — revisar contexto',
   fall: 'Posible caída',
   intrusion: 'Posible intrusión',
+  smoke: 'Posible humo / incendio',
+  theft: 'Posible robo — comportamiento sospechoso detectado',
+  violence: 'Posible altercado — revisar contexto',
+  ppe_missing: 'Posible falta de EPP',
   'sin casco': 'Posible falta de EPP (casco)',
 };
 

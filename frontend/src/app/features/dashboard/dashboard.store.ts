@@ -31,16 +31,7 @@ export class DashboardStore {
   readonly error = this._error.asReadonly();
 
   /** REST cameras + live highlight overlays from realtime. */
-  readonly cameras = computed(() => {
-    const base = this._cameras();
-    const live = this.realtime.liveCameras();
-    const byId = new Map(base.map((c) => [c.id, c]));
-    for (const cam of live) {
-      const existing = byId.get(cam.id);
-      byId.set(cam.id, existing ? { ...existing, ...cam, label: existing.label } : cam);
-    }
-    return [...byId.values()];
-  });
+  readonly cameras = computed(() => this.realtime.mergeCameras(this._cameras()));
 
   /** REST recent + live incidents, deduped by id (live first). */
   readonly recent = computed(() => {

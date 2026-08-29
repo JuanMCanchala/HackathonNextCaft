@@ -108,7 +108,18 @@ import type { OperationalSeverity } from '../../core/models/enums';
                 <app-additional-details class="mt-2 block" [metadata]="det.metadata" />
               </li>
             } @empty {
-              <p class="text-sm text-[var(--sentra-text-mid)]">Sin detecciones.</p>
+              @if (inc.detectionIds.length) {
+                <ul class="space-y-1 font-mono text-xs text-[var(--sentra-text-mid)]">
+                  @for (did of inc.detectionIds; track did) {
+                    <li>{{ did }}</li>
+                  }
+                </ul>
+                <p class="mt-2 text-xs text-[var(--sentra-text-low)]">
+                  El backend MVP solo expone IDs de detección en el detalle (sin listado nested).
+                </p>
+              } @else {
+                <p class="text-sm text-[var(--sentra-text-mid)]">Sin detecciones.</p>
+              }
             }
           </ul>
         </section>
@@ -119,7 +130,29 @@ import type { OperationalSeverity } from '../../core/models/enums';
             @for (ev of store.evidence(); track ev.id) {
               <app-evidence-viewer [descriptor]="ev" />
             } @empty {
-              <p class="text-sm text-[var(--sentra-text-mid)]">Sin evidencia.</p>
+              @if (inc.evidenceIds.length) {
+                <ul class="col-span-full space-y-2">
+                  @for (ref of inc.evidenceIds; track ref) {
+                    <li class="rounded border border-[var(--sentra-line)] p-3 text-xs">
+                      @if (isUrl(ref)) {
+                        <a
+                          class="break-all text-[var(--sentra-signal-cyan)] underline"
+                          [href]="ref"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >{{ ref }}</a>
+                      } @else {
+                        <span class="font-mono break-all text-[var(--sentra-text-mid)]">{{ ref }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+                <p class="col-span-full text-xs text-[var(--sentra-text-low)]">
+                  Refs de evidencia del intake (sin access grant en MVP).
+                </p>
+              } @else {
+                <p class="text-sm text-[var(--sentra-text-mid)]">Sin evidencia.</p>
+              }
             }
           </div>
         </section>
@@ -133,5 +166,9 @@ export class IncidentDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.store.loadDetail(this.id());
+  }
+
+  isUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value);
   }
 }

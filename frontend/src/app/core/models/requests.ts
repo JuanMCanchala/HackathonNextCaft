@@ -106,3 +106,10 @@ export interface ListQuery {
   cursor?: string;
   limit?: number;
 }
+
+export interface CreateWorkspaceRequest {
+  name: string;
+  groupingWindowSeconds?: number;
+  retentionDays?: number;
+  timezone?: string;
+}

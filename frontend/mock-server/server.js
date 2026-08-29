@@ -111,6 +111,30 @@ server.get('/v1/workspaces/:workspaceId', (req, res) => {
   res.json(ws);
 });
 
+server.post('/v1/workspaces', (req, res) => {
+  const name = String(req.body?.name ?? '').trim();
+  if (name.length < 1 || name.length > 128) {
+    return apiError(res, 400, 'VALIDATION_ERROR', 'Nombre de workspace inválido');
+  }
+
+  const now = new Date().toISOString();
+  const workspace = {
+    id: `ws_${Date.now()}`,
+    name,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+    settings: {
+      groupingWindowSeconds: req.body?.groupingWindowSeconds ?? 45,
+      retentionDays: req.body?.retentionDays ?? 30,
+      timezone: req.body?.timezone ?? 'America/Bogota',
+    },
+  };
+
+  db.get('workspaces').push(workspace).write();
+  res.status(201).json(workspace);
+});
+
 // --- Cameras ---
 server.get('/v1/cameras', (req, res) => {
   const { workspaceId, adminStatus, connectivity, cursor, limit } = req.query;
@@ -164,6 +188,11 @@ function transitionIncident(req, res, targetState, opts = {}) {
   const idempotency = checkIdempotency(req, res);
   if (idempotency === 'conflict' || idempotency === 'handled') return;
 
+  // Alineado con convex/incidents.ts: ack/resolve/dismiss están frozen en MVP.
+  if (opts.mvpFrozen) {
+    return apiError(res, 409, 'CONFLICT', `${opts.command} is unavailable in MVP`);
+  }
+
   const incident = findIncident(req.params.incidentId);
   if (!incident) return apiError(res, 404, 'NOT_FOUND', 'Incidente no encontrado');
 
@@ -177,10 +206,9 @@ function transitionIncident(req, res, targetState, opts = {}) {
   }
 
   const fromState = incident.state;
+  // Convex MVP: solo detected → triaged (mismo que incidents.triage + assertTransition).
   const allowed = {
-    detected: { triage: 'triaged', dismiss: 'dismissed' },
-    triaged: { acknowledge: 'acknowledged', dismiss: 'dismissed' },
-    acknowledged: { resolve: 'resolved', dismiss: 'dismissed' },
+    detected: { triage: 'triaged' },
   };
 
   const next = allowed[fromState]?.[opts.command];
@@ -222,118 +250,40 @@ server.post('/v1/incidents/:incidentId/triage', (req, res) =>
   transitionIncident(req, res, 'triaged', { command: 'triage' }),
 );
 server.post('/v1/incidents/:incidentId/acknowledge', (req, res) =>
-  transitionIncident(req, res, 'acknowledged', { command: 'acknowledge' }),
+  transitionIncident(req, res, 'acknowledged', { command: 'acknowledge', mvpFrozen: true }),
 );
 server.post('/v1/incidents/:incidentId/resolve', (req, res) =>
-  transitionIncident(req, res, 'resolved', { command: 'resolve' }),
+  transitionIncident(req, res, 'resolved', { command: 'resolve', mvpFrozen: true }),
 );
 server.post('/v1/incidents/:incidentId/dismiss', (req, res) =>
-  transitionIncident(req, res, 'dismissed', { command: 'dismiss', requireReason: true }),
+  transitionIncident(req, res, 'dismissed', {
+    command: 'dismiss',
+    requireReason: true,
+    mvpFrozen: true,
+  }),
 );
 
 server.patch('/v1/incidents/:incidentId', (req, res) => {
-  const idempotency = checkIdempotency(req, res);
-  if (idempotency === 'conflict' || idempotency === 'handled') return;
-
-  const incident = findIncident(req.params.incidentId);
-  if (!incident) return apiError(res, 404, 'NOT_FOUND', 'Incidente no encontrado');
-
-  const { severity, reason, expectedVersion } = req.body ?? {};
-  if (expectedVersion !== incident.version) {
-    return apiError(res, 409, 'CONFLICT', 'Versión obsoleta del incidente');
-  }
-
-  if (!severity || severity === incident.severity) {
-    return apiError(res, 400, 'VALIDATION_ERROR', 'severity debe cambiar');
-  }
-  if (!reason || !String(reason).trim()) {
-    return apiError(res, 400, 'VALIDATION_ERROR', 'reason es requerido al cambiar severidad');
-  }
-
-  const updated = {
-    ...incident,
-    severity,
-    version: incident.version + 1,
-    lastObservedAt: nowIso(),
-    severityOverride: {
-      from: incident.severity,
-      to: severity,
-      reason,
-      actorSubjectId: 'user_operator_demo',
-      at: nowIso(),
-    },
-    timeline: [
-      ...incident.timeline,
-      {
-        id: nextTimelineId(incident.id),
-        at: nowIso(),
-        type: 'severity_changed',
-        actorKind: 'user',
-        actorId: 'user_operator_demo',
-        from: incident.severity,
-        to: severity,
-        message: reason,
-      },
-    ],
-  };
-
-  writeIncident(updated);
-  storeIdempotency(idempotency, 200, updated, JSON.stringify(req.body));
-  res.json(updated);
+  return apiError(res, 409, 'CONFLICT', 'patch severity is unavailable in MVP');
 });
 
 server.get('/v1/incidents/:incidentId/detections', (req, res) => {
-  const incident = findIncident(req.params.incidentId);
-  if (!incident) return apiError(res, 404, 'NOT_FOUND', 'Incidente no encontrado');
-
-  const detections = db
-    .get('detections')
-    .filter((d) => incident.detectionIds.includes(d.id))
-    .value()
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-
-  res.json(paginate(detections, { cursor: req.query.cursor, limit: req.query.limit }));
+  // Convex MVP no expone nested detections; el detalle trae detectionIds.
+  res.json({ items: [], nextCursor: null, hasMore: false });
 });
 
 server.get('/v1/incidents/:incidentId/evidence', (req, res) => {
-  const incident = findIncident(req.params.incidentId);
-  if (!incident) return apiError(res, 404, 'NOT_FOUND', 'Incidente no encontrado');
-
-  const evidence = db
-    .get('evidence')
-    .filter((e) => incident.evidenceIds.includes(e.id))
-    .value()
-    .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt));
-
-  res.json(paginate(evidence, { cursor: req.query.cursor, limit: req.query.limit }));
+  res.json({ items: [], nextCursor: null, hasMore: false });
 });
 
 // --- Evidence access ---
 server.post('/v1/evidence/:evidenceId/access', (req, res) => {
-  const idempotency = checkIdempotency(req, res);
-  if (idempotency === 'conflict' || idempotency === 'handled') return;
-
-  const evidence = db.get('evidence').find({ id: req.params.evidenceId }).value();
-  if (!evidence) return apiError(res, 404, 'NOT_FOUND', 'Evidencia no encontrada');
-
-  if (evidence.status === 'unavailable' || evidence.status === 'failed') {
-    return apiError(res, 503, 'EVIDENCE_UNAVAILABLE', 'Evidencia no disponible');
-  }
-  if (evidence.status === 'expired') {
-    return apiError(res, 503, 'EVIDENCE_UNAVAILABLE', 'Evidencia expirada');
-  }
-
-  const ttl = Math.min(300, Math.max(60, req.body?.ttlSeconds ?? 120));
-  const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
-  const grant = {
-    evidenceId: evidence.id,
-    url: `https://mock.sentra.local/evidence/${evidence.id}?token=mock_${Date.now()}`,
-    expiresAt,
-    purpose: req.body?.purpose ?? 'incident-detail',
-  };
-
-  storeIdempotency(idempotency, 200, grant, JSON.stringify(req.body));
-  res.json(grant);
+  return apiError(
+    res,
+    409,
+    'EVIDENCE_UNAVAILABLE',
+    'Evidence access grants no disponibles en MVP',
+  );
 });
 
 // --- Stats ---

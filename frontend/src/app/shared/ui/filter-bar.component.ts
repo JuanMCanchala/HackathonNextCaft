@@ -6,6 +6,7 @@ import {
   INCIDENT_STATES,
   OPERATIONAL_SEVERITIES,
 } from '../../core/models/enums';
+import { HlmInputDirective } from './primitives';
 
 export type FilterBarMode = 'incidents' | 'cameras';
 
@@ -24,16 +25,17 @@ export interface CameraFilterValue {
 @Component({
   selector: 'app-filter-bar',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, HlmInputDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-wrap items-end gap-3 rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel)] p-3">
+    <div class="sentra-panel flex flex-wrap items-end gap-3 p-4">
       @if (mode() === 'incidents') {
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Estado
           <select
             multiple
-            class="mt-1 block min-w-[140px] rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 block min-h-[5rem] min-w-[140px]"
             [ngModel]="incidentFilters().state"
             (ngModelChange)="onIncident('state', $event)"
           >
@@ -42,11 +44,12 @@ export interface CameraFilterValue {
             }
           </select>
         </label>
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Severidad
           <select
             multiple
-            class="mt-1 block min-w-[140px] rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 block min-h-[5rem] min-w-[140px]"
             [ngModel]="incidentFilters().severity"
             (ngModelChange)="onIncident('severity', $event)"
           >
@@ -55,27 +58,30 @@ export interface CameraFilterValue {
             }
           </select>
         </label>
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Categoría
           <input
-            class="mt-1 block w-40 rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 w-40"
             [ngModel]="incidentFilters().category"
             (ngModelChange)="onIncident('category', $event)"
           />
         </label>
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Cámara
           <input
-            class="mt-1 block w-40 rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 font-mono text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 w-40 font-mono"
             [ngModel]="incidentFilters().cameraId"
             (ngModelChange)="onIncident('cameraId', $event)"
           />
         </label>
       } @else {
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Admin
           <select
-            class="mt-1 block rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 block min-w-[140px]"
             [ngModel]="cameraFilters().adminStatus"
             (ngModelChange)="onCamera('adminStatus', $event)"
           >
@@ -85,10 +91,11 @@ export interface CameraFilterValue {
             }
           </select>
         </label>
-        <label class="text-xs text-[var(--sentra-text-low)]">
+        <label class="text-xs text-muted-foreground">
           Conectividad
           <select
-            class="mt-1 block rounded border border-[var(--sentra-line)] bg-[var(--sentra-bg-panel-2)] px-2 py-1.5 text-sm text-[var(--sentra-text-hi)]"
+            hlmInput
+            class="mt-1 block min-w-[140px]"
             [ngModel]="cameraFilters().connectivity"
             (ngModelChange)="onCamera('connectivity', $event)"
           >

@@ -3,7 +3,7 @@ import { HttpParams } from '@angular/common/http';
 import { ApiClient } from '../../core/http/api-client.service';
 import { appendParam } from '../../core/http/query-params';
 import type { Camera } from '../../core/models/camera';
-import type { ListCamerasQuery } from '../../core/models/requests';
+import type { CreateCameraRequest, ListCamerasQuery } from '../../core/models/requests';
 import type { Page } from '../../core/models/page';
 import { cameraSchema } from '../../core/validation/schemas';
 import { clampLimit } from '../../core/validation/schemas';
@@ -25,5 +25,9 @@ export class ApiCameraRepository implements CameraRepository {
 
   get(id: string): Promise<Camera> {
     return this.api.get(`/cameras/${id}`, cameraSchema);
+  }
+
+  create(request: CreateCameraRequest): Promise<Camera> {
+    return this.api.post('/cameras', cameraSchema, request);
   }
 }

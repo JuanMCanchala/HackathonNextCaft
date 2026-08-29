@@ -2,33 +2,72 @@
 
 @import 'tailwindcss';
 
-/* Dark-first (default). Light: html[data-theme="light"] */
+/* ─── Sentra design tokens (dark-first) ─────────────────────────────────── */
 :root,
 html[data-theme='dark'] {
+  /* Surfaces */
   --sentra-bg-void: #0a0e17;
   --sentra-bg-panel: #111827;
   --sentra-bg-panel-2: #161f33;
   --sentra-line: #232e47;
   --sentra-line-bright: #2f3d5e;
+
+  /* Text */
   --sentra-text-hi: #e9edf6;
   --sentra-text-mid: #a6b0c8;
   --sentra-text-low: #5c6884;
+
+  /* Brand / signal */
   --sentra-signal-cyan: #22e0ff;
   --sentra-signal-cyan-dim: rgba(34, 224, 255, 0.14);
   --sentra-ok: #2fe08a;
   --sentra-ok-dim: rgba(47, 224, 138, 0.14);
   --sentra-warn: #ffb020;
   --sentra-warn-dim: rgba(255, 176, 32, 0.14);
-  /* OperationalSeverity — rojo solo critical (RNF-UX-2) */
+
+  /* Severity (rojo solo critical — RNF-UX-2) */
   --sentra-severity-low: #6b7a99;
   --sentra-severity-medium: #ffb020;
   --sentra-severity-high: #ff8c42;
   --sentra-severity-critical: #ff4d5e;
   --sentra-severity-critical-dim: rgba(255, 77, 94, 0.14);
-  --sentra-font-display: 'Space Grotesk', sans-serif;
-  --sentra-font-body: 'IBM Plex Sans', sans-serif;
-  --sentra-font-mono: 'JetBrains Mono', monospace;
-  --sentra-radius: 3px;
+
+  /* Typography */
+  --sentra-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --sentra-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --sentra-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Shape */
+  --sentra-radius: 6px;
+  --sentra-radius-lg: 10px;
+  --sentra-shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* Spartan / shadcn bridge (mapeo 1:1 con tokens Sentra) */
+  --background: var(--sentra-bg-void);
+  --foreground: var(--sentra-text-hi);
+  --card: var(--sentra-bg-panel);
+  --card-foreground: var(--sentra-text-hi);
+  --popover: var(--sentra-bg-panel-2);
+  --popover-foreground: var(--sentra-text-hi);
+  --primary: var(--sentra-signal-cyan);
+  --primary-foreground: #0a0e17;
+  --secondary: var(--sentra-bg-panel-2);
+  --secondary-foreground: var(--sentra-text-hi);
+  --muted: var(--sentra-bg-panel-2);
+  --muted-foreground: var(--sentra-text-mid);
+  --accent: var(--sentra-signal-cyan-dim);
+  --accent-foreground: var(--sentra-signal-cyan);
+  --destructive: var(--sentra-severity-critical);
+  --destructive-foreground: #fff;
+  --border: var(--sentra-line);
+  --input: var(--sentra-line);
+  --ring: var(--sentra-signal-cyan);
+  --radius: var(--sentra-radius);
+  --sidebar: var(--sentra-bg-panel);
+  --sidebar-foreground: var(--sentra-text-hi);
+  --sidebar-border: var(--sentra-line);
+  --sidebar-accent: var(--sentra-signal-cyan-dim);
+  --sidebar-accent-foreground: var(--sentra-signal-cyan);
 }
 
 html[data-theme='light'] {
@@ -42,15 +81,51 @@ html[data-theme='light'] {
   --sentra-text-low: #7a869c;
   --sentra-signal-cyan: #0891b2;
   --sentra-signal-cyan-dim: rgba(8, 145, 178, 0.12);
+  --primary-foreground: #ffffff;
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: var(--sentra-radius-lg);
+  --font-display: var(--sentra-font-display);
+  --font-body: var(--sentra-font-body);
+  --font-mono: var(--sentra-font-mono);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
 html,
 body {
   height: 100%;
   margin: 0;
-  background: var(--sentra-bg-void);
-  color: var(--sentra-text-hi);
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--sentra-font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
@@ -59,15 +134,67 @@ body {
     radial-gradient(circle at 85% 100%, rgba(255, 77, 94, 0.04), transparent 45%);
 }
 
-*:focus-visible {
-  outline: 2px solid var(--sentra-signal-cyan);
-  outline-offset: 2px;
-}
-
 .font-mono {
   font-family: var(--sentra-font-mono);
 }
 
 .font-display {
   font-family: var(--sentra-font-display);
+}
+
+.font-body {
+  font-family: var(--sentra-font-body);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ─── Component utilities (@layer — convención Sentra) ─────────────────────── */
+@layer components {
+  .sentra-panel {
+    @apply rounded-[var(--sentra-radius-lg)] border border-border bg-card text-card-foreground;
+    box-shadow: var(--sentra-shadow-panel);
+  }
+
+  .sentra-panel-elevated {
+    @apply rounded-[var(--sentra-radius-lg)] border border-border/80 bg-[var(--sentra-bg-panel-2)] text-card-foreground;
+    box-shadow: var(--sentra-shadow-panel);
+  }
+
+  .sentra-inset {
+    @apply rounded-md border border-border bg-muted/40 p-3;
+  }
+
+  .sentra-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .sentra-btn-primary {
+    @apply bg-primary text-primary-foreground hover:brightness-110;
+  }
+
+  .sentra-btn-secondary {
+    @apply border border-border bg-secondary text-secondary-foreground hover:bg-muted;
+  }
+
+  .sentra-btn-ghost {
+    @apply text-foreground hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .sentra-btn-danger {
+    @apply bg-destructive text-destructive-foreground hover:brightness-110;
+  }
+
+  .sentra-input {
+    @apply flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm;
+    @apply placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .sentra-badge {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium;
+  }
 }

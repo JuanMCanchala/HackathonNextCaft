@@ -1,5 +1,6 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { REALTIME_SERVICE } from '../config/injection-tokens';
+import type { Camera } from '../models/camera';
 
 /**
  * Facade leída por Dashboard / Cámaras / Incidentes.
@@ -13,6 +14,16 @@ export class RealtimeStore {
   readonly liveIncidents = this.realtime.incidents();
   readonly liveCameras = this.realtime.cameras();
   readonly liveDetections = this.realtime.detections();
+
+  /** REST/Convex + overlays live (misma lógica en dashboard y módulo cámaras). */
+  mergeCameras(base: readonly Camera[]): Camera[] {
+    const byId = new Map(base.map((c) => [c.id, c]));
+    for (const cam of this.liveCameras()) {
+      const existing = byId.get(cam.id);
+      byId.set(cam.id, existing ? { ...existing, ...cam, label: existing.label } : cam);
+    }
+    return [...byId.values()];
+  }
 
   readonly highlightedCameraIds = computed(() => {
     const ids = new Set<string>();

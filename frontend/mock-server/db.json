@@ -120,7 +120,7 @@
       "initialSeverity": "high",
       "severityOverride": null,
       "detectionIds": ["det_001"],
-      "evidenceIds": ["ev_001"],
+      "evidenceIds": ["https://example.com/clips/ev_001.jpg"],
       "timeline": [
         {
           "id": "tl_001_1",
