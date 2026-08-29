@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation } from "./_generated/server";
@@ -321,6 +322,16 @@ export const acceptNormalized = internalMutation({
       requestHash: fingerprint,
       response: result,
       createdAt: now,
+    });
+
+    // Aviso humano. Va por el planificador y no en linea: un proveedor lento o
+    // caido no puede retrasar el intake ni hacer perder el incidente. Al ser
+    // `runAfter` dentro de una mutation es transaccional, asi que si esta
+    // transaccion se deshace tampoco se llama a nadie. La decision de si
+    // procede avisar vive en `alertPolicy`, no aqui.
+    await ctx.scheduler.runAfter(0, internal.alerts.dispatch, {
+      incidentId: linked.incidentId,
+      disposition: linked.disposition,
     });
 
     return result;

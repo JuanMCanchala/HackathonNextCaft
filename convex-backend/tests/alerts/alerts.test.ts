@@ -1,0 +1,313 @@
+import { api, internal } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { createTestBackend, type SentraTest } from "../helpers/convexHarness";
+
+/**
+ * El aviso es la unica parte del sistema que actua fuera del ordenador. Estos
+ * casos cubren lo que puede salir mal de forma cara:
+ *
+ *   - llamar diez veces por la misma pelea,
+ *   - llamar por algo que no lo merece,
+ *   - y que un proveedor caido se lleve por delante el incidente.
+ *
+ * La cadena se prueba en dos tramos en vez de end-to-end a proposito. El
+ * planificador de `convex-test` deja la funcion en `pending` hasta que alguien
+ * avanza los temporizadores, y hacerlo con temporizadores falsos cuelga el
+ * runner: la accion espera un `fetch` que ya no avanza. Asi que se comprueba
+ * (a) que el intake PROGRAMA el aviso con los datos correctos, y (b) que la
+ * accion hace lo que debe con cada entrada. Junto cubre lo mismo sin depender
+ * de la emulacion de tiempo.
+ *
+ * `fetch` esta interceptado: ningun test sale a la red ni marca un telefono.
+ */
+
+type Llamada = { url: string; init: RequestInit };
+
+let llamadas: Llamada[] = [];
+let respuesta: () => Response;
+
+const fetchOriginal = global.fetch;
+
+const ENTORNO_COMPLETO: Record<string, string> = {
+  RESEND_API_KEY: "re_test",
+  ALERT_EMAIL_FROM: "alerta@ejemplo.com",
+  ALERT_EMAIL_TO: "guardia@ejemplo.com",
+  TWILIO_ACCOUNT_SID: "ACtest",
+  TWILIO_AUTH_TOKEN: "token_test",
+  TWILIO_FROM: "+15550000000",
+  ALERT_PHONE_TO: "+34600000000",
+};
+
+const CLAVES_OPCIONALES = ["ALERT_CALL_MIN_SEVERITY", "ALERT_EMAIL_MIN_SEVERITY"];
+
+beforeEach(() => {
+  llamadas = [];
+  respuesta = () => new Response(JSON.stringify({ id: "ok" }), { status: 200 });
+  global.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    llamadas.push({ url: String(url), init: init ?? {} });
+    return respuesta();
+  }) as typeof fetch;
+  Object.assign(process.env, ENTORNO_COMPLETO);
+});
+
+afterEach(() => {
+  global.fetch = fetchOriginal;
+  for (const clave of [...Object.keys(ENTORNO_COMPLETO), ...CLAVES_OPCIONALES]) {
+    delete process.env[clave];
+  }
+});
+
+async function sembrar(t: SentraTest) {
+  const { workspaceId } = await t.mutation(internal.seed.bootstrap, {
+    adminTokenIdentifier: "issuer|admin-alerts",
+    adminSubjectId: "admin-alerts",
+    workspaceName: "Planta con avisos",
+  });
+  const camara = await t
+    .withIdentity({ tokenIdentifier: "issuer|admin-alerts", subject: "admin-alerts" })
+    .mutation(api.cameras.create, {
+      workspaceId: workspaceId as Id<"workspaces">,
+      externalId: "cam-alerts-1",
+      label: "Anden 3",
+    });
+  return {
+    workspaceId: workspaceId as Id<"workspaces">,
+    cameraId: camara.id as Id<"cameras">,
+  };
+}
+
+function observacion(
+  workspaceId: Id<"workspaces">,
+  cameraId: Id<"cameras">,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    workspaceId,
+    cameraId,
+    sourceNamespace: "sentinel-vision",
+    sourceEventId: "evt-alert-1",
+    timestamp: "2026-08-29T12:00:00Z",
+    category: "violence",
+    confidence: 0.91,
+    modelVersion: "gemini-3.5-flash-lite",
+    detectorVersion: "yolo11n-pose.pt@480",
+    ...extra,
+  };
+}
+
+/** Lo que el intake dejo encolado, sin ejecutarlo. */
+async function programado(t: SentraTest) {
+  return t.run(async (ctx) => ctx.db.system.query("_scheduled_functions").collect());
+}
+
+async function tiempoDe(t: SentraTest, incidentId: string) {
+  return t.run(async (ctx) =>
+    ctx.db
+      .query("incidentTimeline")
+      .filter((q) => q.eq(q.field("incidentId"), incidentId))
+      .collect(),
+  );
+}
+
+describe("el intake encola el aviso", () => {
+  it("un incidente nuevo encola el envio con disposition created", async () => {
+    const t = createTestBackend();
+    const { workspaceId, cameraId } = await sembrar(t);
+
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId),
+    );
+
+    const cola = await programado(t);
+    expect(cola).toHaveLength(1);
+    expect(cola[0]?.name).toBe("alerts:dispatch");
+    expect(cola[0]?.args[0]).toEqual({
+      incidentId: resultado.incidentId,
+      disposition: "created",
+    });
+  });
+
+  it("la segunda deteccion de la misma pelea se encola como grouped", async () => {
+    // Es la proteccion que de verdad importa: treinta segundos de pelea entran
+    // como muchas detecciones y un solo incidente. La politica descarta
+    // `grouped`, asi que el telefono suena una vez.
+    const t = createTestBackend();
+    const { workspaceId, cameraId } = await sembrar(t);
+
+    const primera = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId),
+    );
+    const segunda = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId, {
+        sourceEventId: "evt-alert-2",
+        timestamp: "2026-08-29T12:00:04Z",
+      }),
+    );
+
+    expect(segunda.incidentId).toBe(primera.incidentId);
+    expect(segunda.disposition).toBe("grouped");
+
+    const cola = await programado(t);
+    const disposiciones = cola.map(
+      (tarea) => (tarea.args[0] as { disposition: string }).disposition,
+    );
+    expect(disposiciones).toEqual(["created", "grouped"]);
+  });
+});
+
+describe("la accion de aviso", () => {
+  async function incidenteDe(t: SentraTest, categoria: string) {
+    const { workspaceId, cameraId } = await sembrar(t);
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId, { category: categoria }),
+    );
+    return resultado.incidentId;
+  }
+
+  it("una agresion nueva llama por telefono y manda correo", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const destinos = llamadas.map((c) => c.url);
+    expect(destinos.some((u) => u.includes("api.twilio.com"))).toBe(true);
+    expect(destinos.some((u) => u.includes("api.resend.com"))).toBe(true);
+
+    const eventos = await tiempoDe(t, incidentId);
+    expect(eventos.filter((e) => e.type === "alert.sent")).toHaveLength(2);
+  });
+
+  it("la llamada dice el tipo de incidente y la camara", async () => {
+    // Quien contesta el telefono de madrugada necesita saber a donde ir antes
+    // de abrir el panel.
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const twilio = llamadas.find((c) => c.url.includes("api.twilio.com"));
+    expect(twilio).toBeDefined();
+    const twiml = new URLSearchParams(String(twilio?.init.body ?? "")).get("Twiml") ?? "";
+    expect(twiml).toContain("agresion");
+    expect(twiml).toContain("Anden 3");
+  });
+
+  it("un incidente agrupado no avisa a nadie", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "grouped" });
+
+    expect(llamadas).toHaveLength(0);
+    const eventos = await tiempoDe(t, incidentId);
+    expect(eventos.some((e) => String(e.type).startsWith("alert."))).toBe(false);
+  });
+
+  it("un robo manda correo pero no levanta el telefono", async () => {
+    // theft es medium en sev-v2: perdida economica, nadie en peligro.
+    const t = createTestBackend();
+    process.env.ALERT_EMAIL_MIN_SEVERITY = "medium";
+    const incidentId = await incidenteDe(t, "theft");
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas.some((c) => c.url.includes("api.twilio.com"))).toBe(false);
+    expect(llamadas.some((c) => c.url.includes("api.resend.com"))).toBe(true);
+  });
+
+  it("con los umbrales por defecto un robo no avisa por ningun canal", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "theft");
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas).toHaveLength(0);
+    const eventos = await tiempoDe(t, incidentId);
+    const saltado = eventos.find((e) => e.type === "alert.skipped");
+    expect(saltado?.payload?.reason).toBe("below-threshold");
+  });
+
+  it("sin credenciales no se intenta nada y queda el motivo", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+    for (const clave of Object.keys(ENTORNO_COMPLETO)) {
+      delete process.env[clave];
+    }
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    expect(llamadas).toHaveLength(0);
+    const eventos = await tiempoDe(t, incidentId);
+    const saltado = eventos.find((e) => e.type === "alert.skipped");
+    expect(saltado?.payload?.reason).toBe("no-channel-configured");
+  });
+
+  it("si el proveedor falla la accion no revienta y queda el motivo", async () => {
+    // Un 429 de Twilio no puede propagarse: el incidente ya esta guardado y
+    // reventar aqui solo llenaria los logs del deployment.
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+    respuesta = () => new Response("rate limited", { status: 429 });
+
+    await expect(
+      t.action(internal.alerts.dispatch, { incidentId, disposition: "created" }),
+    ).resolves.toBeNull();
+
+    const eventos = await tiempoDe(t, incidentId);
+    const fallidos = eventos.filter((e) => e.type === "alert.failed");
+    expect(fallidos).toHaveLength(2);
+    expect(String(fallidos[0]?.payload?.detail)).toContain("429");
+  });
+
+  it("un canal caido no impide que salga el otro", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+    respuesta = () => {
+      throw new Error("socket cerrado");
+    };
+    let primera = true;
+    global.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      llamadas.push({ url: String(url), init: init ?? {} });
+      if (primera) {
+        primera = false;
+        throw new Error("socket cerrado");
+      }
+      return new Response(JSON.stringify({ id: "ok" }), { status: 200 });
+    }) as typeof fetch;
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const eventos = await tiempoDe(t, incidentId);
+    expect(eventos.filter((e) => e.type === "alert.sent")).toHaveLength(1);
+    expect(eventos.filter((e) => e.type === "alert.failed")).toHaveLength(1);
+  });
+
+  it("el rastro del aviso no guarda credenciales", async () => {
+    // La linea de tiempo la lee cualquier miembro del workspace.
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+    respuesta = () => new Response("invalid token ACtest/token_test", { status: 401 });
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const serializado = JSON.stringify(await tiempoDe(t, incidentId));
+    expect(serializado).not.toContain("token_test");
+    expect(serializado).not.toContain("re_test");
+  });
+
+  it("un incidente que ya no existe no revienta la accion", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteDe(t, "violence");
+    await t.run(async (ctx) => ctx.db.delete(incidentId as Id<"incidents">));
+
+    await expect(
+      t.action(internal.alerts.dispatch, { incidentId, disposition: "created" }),
+    ).resolves.toBeNull();
+    expect(llamadas).toHaveLength(0);
+  });
+});
