@@ -262,15 +262,24 @@ const MAX_EVENTOS = 50;
       </div>
 
       <div class="sentra-panel p-5">
-        <p class="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Lo que ha visto el motor
-        </p>
+        <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Lo que ha visto el motor
+          </p>
+          @if (eventos().length > 0) {
+            <p class="font-mono text-[11px] text-muted-foreground">
+              {{ eventos().length }} detecciones ·
+              <span class="text-destructive">{{ confirmados() }} confirmadas</span> ·
+              {{ descartados() }} descartadas
+            </p>
+          }
+        </div>
         @if (eventos().length === 0) {
           <p class="py-6 text-center text-sm text-muted-foreground">
             Todavía no ha disparado nada.
           </p>
         } @else {
-          <div class="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+          <div class="space-y-3">
             @for (evento of eventos(); track evento.id) {
               <button
                 type="button"
@@ -675,6 +684,14 @@ export class LivePageComponent implements OnInit, OnDestroy {
         this.lanzando.set(null);
       }
     }
+  }
+
+  confirmados(): number {
+    return this.eventos().filter((e) => e.status === 'incident').length;
+  }
+
+  descartados(): number {
+    return this.eventos().filter((e) => e.status === 'dismissed').length;
   }
 
   resumen(): Array<[string, string]> {
