@@ -19,6 +19,7 @@ from .. import config
 from .buffer import RingBuffer
 from .events import EventStore, write_frames
 from .gate import Domain, Gate
+from .privacy import anonymize
 from . import timeline as timeline_mod
 from .signals import TrackHistory
 from .tracker import PoseTracker
@@ -149,10 +150,11 @@ class Analyzer:
 
             t = index / src_fps
             job.frames += 1
-            buffer.push(t, frame)
             ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
 
-            for track in self.tracker(frame):
+            detected = self.tracker(frame)
+            buffer.push(t, anonymize(frame, detected) if config.BLUR_FACES else frame)
+            for track in detected:
                 hist = histories.setdefault(track["id"], TrackHistory(track["id"]))
                 hist.push(t, track["bbox"], track["kp"])
 

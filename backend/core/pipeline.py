@@ -25,6 +25,7 @@ from .capture import Camera
 from .events import EventStore, write_frames
 from .gate import Domain, Gate, load_domains
 from .notify import Notifier
+from .privacy import anonymize
 from .signals import TrackHistory
 from .tracker import PoseTracker
 from .vlm import VLMJudge
@@ -312,10 +313,11 @@ class Pipeline:
             feed.warmed = True
             self.status = "running"
 
-        feed.buffer.push(t, frame)
-        feed.buffer_ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
-
+        # El tracker va primero: sus keypoints son los que sitúan la cabeza,
+        # y al buffer solo debe entrar el frame ya anonimizado.
         tracks = feed.tracker(frame)
+        feed.buffer.push(t, anonymize(frame, tracks) if config.BLUR_FACES else frame)
+        feed.buffer_ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
 
         for track in tracks:
             hist = feed.histories.get(track["id"])

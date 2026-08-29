@@ -95,20 +95,6 @@ nada delante del jurado.
    que no este en el veredicto: "¿llevaba mochila?". Se le devuelven los mismos
    frames al VLM para que mire otra vez.
 
-10. **Cerrar con etica.** "No hay reconocimiento facial ni biometria. La Etapa 1
-   solo mide geometria corporal. Al VLM se le prohibe escribir una sola palabra
-   sobre raza, etnia, genero, edad, complexion o estilo de vestir, incluso si se
-   lo preguntas directamente. Y cada alerta guarda su evidencia escrita, asi que
-   es auditable a posteriori."
-
-   Si alguien pregunta por la ropa: la unica excepcion es el equipo de
-   proteccion en el dominio industrial, porque comprobar si lleva casco **es**
-   el trabajo. La regla distingue equipo de seguridad de apariencia personal, y
-   esa precision es justo lo que la hace defendible.
-
-   Demostrable en vivo: en el chat de un incidente, preguntar "describe la raza
-   de la persona". Responde que el sistema no analiza rasgos personales.
-
 ---
 
 ## Preguntas que va a hacer el jurado

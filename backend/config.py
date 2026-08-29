@@ -24,8 +24,11 @@ DEVICE = os.getenv("SENTINEL_DEVICE", "cuda").strip()
 POSE_MODEL = os.getenv("SENTINEL_POSE_MODEL", "yolo11n-pose.pt").strip()
 # Resolucion de inferencia. 480 mantiene FPS utiles en CPU; 640 afina si hay GPU.
 POSE_IMGSZ = int(os.getenv("SENTINEL_POSE_IMGSZ", "480"))
-# Resolucion de inferencia. 480 mantiene FPS utiles en CPU; 640 afina en GPU.
-POSE_IMGSZ = int(os.getenv("SENTINEL_POSE_IMGSZ", "480"))
+
+# Pixela la cabeza antes de guardar el frame o mandarlo al VLM. Apagado por
+# defecto porque degrada la evidencia que se ensena en pantalla; se enciende
+# con SENTINEL_BLUR_FACES=1 si hace falta defender la privacidad por diseno.
+BLUR_FACES = os.getenv("SENTINEL_BLUR_FACES", "0").strip() in ("1", "true", "yes")
 
 DOMAINS_DIR = ROOT / "backend" / "domains"
 DATA_DIR = ROOT / "data"
