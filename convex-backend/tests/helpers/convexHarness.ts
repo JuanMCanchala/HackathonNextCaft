@@ -22,6 +22,7 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/lib/errors.ts": () => import("../../convex/lib/errors"),
   "../../convex/lib/authz.ts": () => import("../../convex/lib/authz"),
   "../../convex/lib/time.ts": () => import("../../convex/lib/time"),
+  "../../convex/lib/workspaceDefaults.ts": () => import("../../convex/lib/workspaceDefaults"),
   "../../convex/lib/dto/workspaces.ts": () => import("../../convex/lib/dto/workspaces"),
   "../../convex/lib/dto/cameras.ts": () => import("../../convex/lib/dto/cameras"),
   "../../convex/lib/dto/incidents.ts": () => import("../../convex/lib/dto/incidents"),
