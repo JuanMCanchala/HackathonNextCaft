@@ -163,6 +163,39 @@ export class VisionService {
     }
   }
 
+  /**
+   * Pregunta libre sobre una deteccion ya analizada.
+   *
+   * Va contra el motor y no contra Convex a proposito: aqui el modelo recibe
+   * los fotogramas del evento, asi que puede mirar la escena en vez de
+   * limitarse al resumen escrito. Y funciona tambien con las detecciones
+   * DESCARTADAS, que nunca llegan a Convex y son las mas interesantes para
+   * preguntar por que no eran un incidente.
+   */
+  async preguntarEvento(
+    eventId: string,
+    pregunta: string,
+  ): Promise<{ ok: boolean; texto: string }> {
+    try {
+      const respuesta = await fetch(`${this.base}/api/events/${eventId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: pregunta }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const datos = (await respuesta.json().catch(() => null)) as {
+        answer?: string;
+        detail?: string;
+      } | null;
+      if (!respuesta.ok) {
+        return { ok: false, texto: datos?.detail ?? `Error ${respuesta.status}` };
+      }
+      return { ok: true, texto: datos?.answer ?? 'Sin respuesta.' };
+    } catch {
+      return { ok: false, texto: 'El asistente tardo demasiado en responder.' };
+    }
+  }
+
   runDemo(domain: string, name: string): Promise<unknown> {
     return this.pedir(`/api/demos/${domain}/${name}/run`, { method: 'POST' });
   }

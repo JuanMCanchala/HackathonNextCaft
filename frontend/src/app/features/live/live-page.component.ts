@@ -475,6 +475,69 @@ const MAX_EVENTOS = 50;
                 </div>
               </div>
 
+              <!-- Preguntar sobre esta deteccion. Va contra el motor y no
+                   contra Convex porque aqui el modelo recibe los fotogramas y
+                   puede mirar la escena, y porque funciona tambien con las
+                   descartadas, que nunca llegan a Convex y son las mas
+                   interesantes para preguntar por que no eran un incidente. -->
+              <div class="border-t border-border pt-5">
+                <p
+                  class="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                >
+                  Preguntar sobre esta detección
+                </p>
+                <form class="flex flex-wrap gap-2" (submit)="preguntar($event, ev)">
+                  <input
+                    type="text"
+                    name="pregunta"
+                    autocomplete="off"
+                    maxlength="500"
+                    placeholder="¿Qué estaba haciendo el sujeto marcado?"
+                    aria-label="Pregunta sobre la detección"
+                    class="min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                    [value]="pregunta()"
+                    (input)="pregunta.set($any($event).target.value)"
+                  />
+                  <button
+                    type="submit"
+                    hlmBtn
+                    variant="default"
+                    [disabled]="consultando() || pregunta().trim().length === 0"
+                  >
+                    {{ consultando() ? 'Consultando…' : 'Preguntar' }}
+                  </button>
+                </form>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  @for (s of sugerencias(); track s) {
+                    <button
+                      type="button"
+                      class="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                      (click)="pregunta.set(s); preguntar(null, ev)"
+                    >
+                      {{ s }}
+                    </button>
+                  }
+                </div>
+                @if (hilo().length > 0) {
+                  <div class="mt-4 space-y-4">
+                    @for (turno of hilo(); track $index) {
+                      <div class="border-t border-border pt-3">
+                        <p class="mb-1.5 font-mono text-xs text-muted-foreground">
+                          {{ turno.q }}
+                        </p>
+                        <p
+                          class="max-w-[64ch] text-sm leading-relaxed"
+                          [class.text-foreground]="!turno.error"
+                          [class.text-destructive]="turno.error"
+                        >
+                          {{ turno.a }}
+                        </p>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
               @if (ev.status === 'dismissed') {
                 <p
                   class="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground"
@@ -506,6 +569,9 @@ export class LivePageComponent implements OnInit, OnDestroy {
   readonly detalle = signal<VisionEvent | null>(null);
   readonly indice = signal(0);
   readonly vista = signal<'clip' | 'frames'>('clip');
+  readonly pregunta = signal('');
+  readonly consultando = signal(false);
+  readonly hilo = signal<Array<{ q: string; a: string; error: boolean }>>([]);
   readonly stream = signal('');
 
   private temporizador?: ReturnType<typeof setInterval>;
@@ -533,6 +599,42 @@ export class LivePageComponent implements OnInit, OnDestroy {
 
   cerrar(): void {
     this.detalle.set(null);
+    // El hilo pertenece a la deteccion que se estaba mirando: arrastrarlo a
+    // la siguiente confundiria mas que ayudar.
+    this.hilo.set([]);
+    this.pregunta.set('');
+  }
+
+  /** Preguntas de arranque, para no dejar al operador ante un cursor vacio. */
+  sugerencias(): string[] {
+    const ev = this.detalle();
+    if (ev?.status === 'dismissed') {
+      return ['¿Por qué no es un incidente?', '¿Qué habría cambiado el veredicto?'];
+    }
+    return [
+      '¿Cuántas personas participan?',
+      '¿Debo llamar a emergencias?',
+      '¿Qué hace el sujeto marcado?',
+    ];
+  }
+
+  async preguntar(evento: Event | null, ev: VisionEvent): Promise<void> {
+    evento?.preventDefault();
+    const texto = this.pregunta().trim();
+    if (texto.length === 0 || this.consultando()) {
+      return;
+    }
+    this.consultando.set(true);
+    this.pregunta.set('');
+    this.hilo.update((h) => [...h, { q: texto, a: 'Consultando…', error: false }]);
+
+    const respuesta = await this.vision.preguntarEvento(ev.id, texto);
+    this.hilo.update((h) => {
+      const copia = [...h];
+      copia[copia.length - 1] = { q: texto, a: respuesta.texto, error: !respuesta.ok };
+      return copia;
+    });
+    this.consultando.set(false);
   }
 
   @HostListener('document:keydown.escape')

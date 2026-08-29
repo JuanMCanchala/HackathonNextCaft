@@ -140,7 +140,7 @@ if ($listo) {
     Write-Host "Sentra esta funcionando." -ForegroundColor Green
     Write-Host ""
     Write-Host "  Motor local     http://localhost:8000" -ForegroundColor White
-    Write-Host "  Panel Sentra    https://sentra-ehtdxel9x-juanmcanchalas-projects.vercel.app/app/live" -ForegroundColor White
+    Write-Host "  Panel Sentra    https://sentra-41vtdmx7s-juanmcanchalas-projects.vercel.app/app/live" -ForegroundColor White
     Write-Host ""
     Write-Host "  El panel se conecta solo al motor de esta maquina. Abre 'En vivo'" -ForegroundColor DarkGray
     Write-Host "  para ver la camara y probar con un clip de la carpeta prueba\." -ForegroundColor DarkGray

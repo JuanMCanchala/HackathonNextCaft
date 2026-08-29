@@ -13,7 +13,7 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODELO="yolo11n-pose.pt"
 URL_MODELO="https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODELO"
-PANEL="https://sentra-ehtdxel9x-juanmcanchalas-projects.vercel.app/app/live"
+PANEL="https://sentra-41vtdmx7s-juanmcanchalas-projects.vercel.app/app/live"
 
 SOLO_MODELO=0
 NO_ARRANCAR=0
