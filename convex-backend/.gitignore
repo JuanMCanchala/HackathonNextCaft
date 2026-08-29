@@ -1,0 +1,8 @@
+node_modules/
+.pnpm-store/
+.env
+.env.local
+.convex/
+convex/_generated/
+coverage/
+.DS_Store

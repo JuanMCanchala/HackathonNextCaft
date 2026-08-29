@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Edit|Write|MultiEdit", "hooks": [{ "type": "command", "command": "node .agents/hooks/format-and-lint.mjs" }] }
+    ]
+  },
+  "scope": "convex-backend",
+  "managedPaths": [".agents/skills/**", ".claude/skills/**", "convex/_generated/**", "skills-lock.json"],
+  "verification": { "tests": "pnpm test", "typecheck": "pnpm run typecheck", "lint": "pnpm run lint:check", "format": "pnpm run format:check", "build": "pnpm run build" }
+}
