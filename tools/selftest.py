@@ -234,6 +234,22 @@ def main() -> int:
               f"{'OK' if ok else 'FALLA'}")
         print(f"{'':<22}{detail}")
 
+    # Regresion: una senal en float32 rompe /api/state con un 500 y se cuela
+    # como string por el WebSocket sin dar error.
+    tipos_malos = []
+    for name, primary, secondary, domain_id, _expect in cases:
+        _f, _s, values = simulate(domains[domain_id], primary, secondary)
+        for sig, val in values.items():
+            if type(val) is not float:
+                tipos_malos.append(f"{name}/{sig} -> {type(val).__name__}")
+    if tipos_malos:
+        failures += 1
+        print("\nSenales que no devuelven float nativo:")
+        for t in tipos_malos[:8]:
+            print("  ", t)
+    else:
+        print("Todas las senales devuelven float nativo.")
+
     print("-" * 84)
     if failures:
         print(f"{failures} de {len(cases)} escenarios no se comportan como deberian.\n")

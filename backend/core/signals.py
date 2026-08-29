@@ -43,7 +43,13 @@ def _mid(a, b):
 
 
 def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    return max(lo, min(hi, v))
+    """Todas las senales pasan por aqui, y todas salen como float de Python.
+
+    numpy propaga float32 en cuanto tocas un array: FastAPI no lo sabe
+    serializar (500 en /api/state) y json.dumps lo convertia a string sin
+    avisar. Este es el unico sitio donde hace falta atajarlo.
+    """
+    return float(max(lo, min(hi, v)))
 
 
 class Sample:
