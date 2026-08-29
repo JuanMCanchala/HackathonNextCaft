@@ -11,11 +11,14 @@ normalizadas y es idempotente por `(workspace, sourceNamespace, sourceEventId)`.
 Se usa el id del evento como `sourceEventId`, asi que reintentar un envio nunca
 duplica un incidente al otro lado.
 
-OJO CON LA TAXONOMIA: su allowlist son tres categorias (`intrusion`, `smoke`,
-`fall`) y aqui se producen unos veinte tipos en cuatro dominios. El mapeo de
-abajo es una decision de producto, no un detalle tecnico, y es deliberadamente
-conservador: lo que no encaja NO se manda, en vez de colarlo como `intrusion` y
-ensuciar sus metricas.
+TAXONOMIA: su allowlist cubre ahora las cuatro verticales (`sev-v2`), asi que
+los cuatro dominios tienen destino. El mapeo de abajo traduce los tipos en
+espanol que devuelve el VLM a sus categorias normalizadas.
+
+Se mapea por tipo concreto antes que por dominio, porque un mismo dominio
+produce categorias distintas: en seguridad industrial, una caida es `fall` y la
+falta de casco es `ppe_missing`. Lo que no encaja en nada NO se manda, en vez de
+colarse en la categoria mas cercana y ensuciar sus metricas.
 """
 from __future__ import annotations
 
@@ -29,33 +32,53 @@ from .. import config
 
 TIMEOUT = 8.0
 
-# Su allowlist actual. Si la amplian, esto es lo unico que hay que tocar.
-CATEGORIAS_CONVEX = ("intrusion", "smoke", "fall")
+# Su allowlist, ampliada a sev-v2 para cubrir las cuatro verticales.
+CATEGORIAS_CONVEX = ("intrusion", "smoke", "fall", "theft", "violence", "ppe_missing")
 
-# Dominio de aqui -> categoria de alli. `None` significa que ese dominio no
-# tiene equivalente todavia y no se envia.
+# Dominio de aqui -> categoria de alli. Es el respaldo cuando el tipo concreto
+# no esta en POR_TIPO, por ejemplo si el VLM devuelve una variante inesperada.
 POR_DOMINIO: dict[str, str | None] = {
+    "retail_theft": "theft",
+    "violence": "violence",
     "fall_detection": "fall",
-    "industrial_safety": "intrusion",   # solo la invasion de zona; ver abajo
-    "retail_theft": None,               # no hay categoria de robo en su lista
-    "violence": None,                   # ni de agresion
+    "industrial_safety": "ppe_missing",
 }
 
-# Algunos tipos concretos mandan sobre el dominio: en seguridad industrial, una
-# caida es `fall` y la falta de EPP no tiene categoria en la que quepa.
+# El tipo concreto manda sobre el dominio: seguridad industrial produce tres
+# categorias distintas segun lo que haya visto el VLM.
 POR_TIPO: dict[str, str | None] = {
-    "caida o accidente": "fall",
+    # robo en tienda
+    "ocultamiento de producto": "theft",
+    "sustraccion sin pago": "theft",
+    "manipulacion de envase o etiqueta": "theft",
+    # agresion
+    "agresion fisica": "violence",
+    "forcejeo o empujon": "violence",
+    "amenaza con objeto": "violence",
+    # caidas
     "caida con perdida de movilidad": "fall",
     "caida con recuperacion": "fall",
     "persona en el suelo sin caida previa": "fall",
+    # seguridad industrial
+    "falta de equipo de proteccion": "ppe_missing",
     "invasion de zona restringida": "intrusion",
-    "falta de equipo de proteccion": None,
+    "caida o accidente": "fall",
 }
+
+# Tipos que el VLM usa para decir "esto es normal". No deberian llegar aqui,
+# porque `notify`/`enviar` filtran por verdict.incident, pero si llegan es que
+# el modelo se contradijo y mas vale no registrarlos como incidente.
+NO_INCIDENTE = frozenset({
+    "ninguno", "comportamiento normal de compra", "interaccion no violenta",
+    "postura normal", "trabajo conforme a norma",
+})
 
 
 def categoria_convex(domain_id: str, incident_type: str) -> str | None:
     """Categoria del otro backend, o None si este incidente no tiene sitio."""
     clave = (incident_type or "").strip().lower()
+    if clave in NO_INCIDENTE:
+        return None
     if clave in POR_TIPO:
         return POR_TIPO[clave]
     return POR_DOMINIO.get(domain_id)

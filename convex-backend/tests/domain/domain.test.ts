@@ -1,5 +1,9 @@
 import { findGroupingTarget } from "../../convex/lib/domain/group";
-import { normalizeObservation, intakePayloadFingerprint } from "../../convex/lib/domain/normalize";
+import {
+  CATEGORY_ALLOWLIST,
+  intakePayloadFingerprint,
+  normalizeObservation,
+} from "../../convex/lib/domain/normalize";
 import { resolveSeverity, SEVERITY_RULE_VERSION } from "../../convex/lib/domain/severity";
 import { assertTransition, canTransition } from "../../convex/lib/domain/transition";
 
@@ -150,19 +154,29 @@ describe("findGroupingTarget", () => {
 });
 
 describe("resolveSeverity", () => {
-  it("maps sev-v1 categories", () => {
-    expect(resolveSeverity("fall")).toEqual({
-      severity: "critical",
-      ruleVersion: SEVERITY_RULE_VERSION,
-    });
-    expect(resolveSeverity("smoke")).toEqual({
-      severity: "high",
-      ruleVersion: SEVERITY_RULE_VERSION,
-    });
-    expect(resolveSeverity("intrusion")).toEqual({
-      severity: "high",
-      ruleVersion: SEVERITY_RULE_VERSION,
-    });
+  it("maps every sev-v2 category", () => {
+    const expected: Record<string, string> = {
+      fall: "critical",
+      violence: "critical",
+      smoke: "high",
+      intrusion: "high",
+      theft: "medium",
+      ppe_missing: "low",
+    };
+    for (const [category, severity] of Object.entries(expected)) {
+      expect(resolveSeverity(category)).toEqual({
+        severity,
+        ruleVersion: SEVERITY_RULE_VERSION,
+      });
+    }
+  });
+
+  it("has a severity rule for every allowed category", () => {
+    // La severidad falla cerrada a proposito, asi que ampliar la allowlist sin
+    // anadir la regla dejaria esa categoria rechazando en tiempo de ejecucion.
+    for (const category of CATEGORY_ALLOWLIST) {
+      expect(() => resolveSeverity(category)).not.toThrow();
+    }
   });
 
   it("fails closed for missing rule", () => {

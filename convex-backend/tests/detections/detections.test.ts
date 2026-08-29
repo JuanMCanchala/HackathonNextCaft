@@ -117,7 +117,7 @@ describe("detections.acceptNormalized", () => {
       expect.objectContaining({
         state: "detected",
         severity: "high",
-        severityRuleVersion: "sev-v1",
+        severityRuleVersion: "sev-v2",
         category: "smoke",
         cameraId,
         workspaceId,

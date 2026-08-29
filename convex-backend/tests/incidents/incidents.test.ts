@@ -131,7 +131,7 @@ describe("incidents public API", () => {
         state: overrides.state ?? "detected",
         severity: "high",
         initialSeverity: "high",
-        severityRuleVersion: "sev-v1",
+        severityRuleVersion: "sev-v2",
         openedAt: now,
         lastObservedAt: now,
         version: overrides.version ?? 0,

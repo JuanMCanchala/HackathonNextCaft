@@ -1,6 +1,16 @@
 import { fromRfc3339 } from "../time";
 
-export const CATEGORY_ALLOWLIST = ["intrusion", "smoke", "fall"] as const;
+// Cubre las cuatro verticales del pipeline de vision. Antes solo entraban
+// caidas e invasion de zona, asi que un robo o una agresion confirmados por
+// el VLM no llegaban a registrarse en ningun sitio.
+export const CATEGORY_ALLOWLIST = [
+  "intrusion",
+  "smoke",
+  "fall",
+  "theft",
+  "violence",
+  "ppe_missing",
+] as const;
 
 export type NormalizedCategory = (typeof CATEGORY_ALLOWLIST)[number];
 

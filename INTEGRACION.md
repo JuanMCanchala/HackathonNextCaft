@@ -43,41 +43,14 @@ pipeline funciona exactamente igual que antes.
 
 ---
 
-## Lo que hay que decidir: la taxonomia
+## La taxonomia, ya alineada
 
-**Este es el bloqueo real, y es una decision de producto.**
+Convex aceptaba tres categorias y el pipeline produce veinte tipos en cuatro
+dominios, asi que robo, agresion y falta de EPP no tenian donde ir: un robo
+confirmado por el VLM no llegaba a registrarse en ningun sitio. Ya esta
+resuelto.
 
-Convex acepta tres categorias (`convex/lib/domain/normalize.ts`):
-
-```ts
-export const CATEGORY_ALLOWLIST = ["intrusion", "smoke", "fall"] as const;
-```
-
-El pipeline de vision produce unos veinte tipos repartidos en cuatro dominios.
-El mapeo actual, en `backend/core/intake.py`:
-
-| Dominio | Tipo | Va a Convex como |
-|---|---|---|
-| `fall_detection` | cualquier caida | `fall` |
-| `industrial_safety` | invasion de zona restringida | `intrusion` |
-| `industrial_safety` | caida o accidente | `fall` |
-| `industrial_safety` | **falta de equipo de proteccion** | **no se envia** |
-| `retail_theft` | **todos** | **no se envia** |
-| `violence` | **todos** | **no se envia** |
-
-Tres de los cuatro dominios no tienen sitio, **incluido robo en tienda, que es
-la demo principal**. Ahora mismo un robo detectado y confirmado por el VLM no
-queda registrado en Convex.
-
-El puente prefiere **no enviar** antes que colar un robo como `intrusion`: sus
-metricas de incidentes quedarian sucias y nadie sabria por que.
-
-### La ampliacion, si se decide hacerla
-
-Son dos ficheros y unas seis lineas. La severidad **falla cerrada** a proposito
-(lanza si falta la regla), asi que hay que tocar las dos.
-
-`convex/lib/domain/normalize.ts`
+`convex/lib/domain/normalize.ts` cubre ahora las cuatro verticales:
 
 ```ts
 export const CATEGORY_ALLOWLIST = [
@@ -85,32 +58,39 @@ export const CATEGORY_ALLOWLIST = [
 ] as const;
 ```
 
-`convex/lib/domain/severity.ts` — y **subiendo la version de la regla**, porque
-su propia spec dice que las politicas de categoria y severidad se versionan
-antes de aplicarse:
+`convex/lib/domain/severity.ts` sube a **`sev-v2`** en vez de editar `sev-v1`,
+porque la spec exige versionar la politica antes de aplicarla: un incidente ya
+guardado debe seguir explicandose con la regla que lo clasifico.
 
-```ts
-export const SEVERITY_RULE_VERSION = "sev-v2";
+| Categoria | Severidad | Por que |
+|---|---|---|
+| `fall`, `violence` | `critical` | riesgo inmediato para una persona |
+| `smoke`, `intrusion` | `high` | |
+| `theft` | `medium` | perdida economica, sin riesgo para nadie |
+| `ppe_missing` | `low` | incumplimiento a corregir, no una emergencia |
 
-const SEV_V2: Record<NormalizedCategory, OperationalSeverity> = {
-  fall: "critical",
-  violence: "critical",
-  smoke: "high",
-  intrusion: "high",
-  theft: "medium",
-  ppe_missing: "low",
-};
+El mapeo de tipos vive en `backend/core/intake.py` y va **por tipo concreto
+antes que por dominio**, porque seguridad industrial produce tres categorias
+distintas: una caida es `fall`, la falta de casco `ppe_missing` y entrar donde
+no se debe `intrusion`.
+
+### Que impide que se vuelva a desincronizar
+
+```powershell
+.venv\Scripts\python.exe -m tools.test_taxonomia
 ```
 
-Y despues, en `backend/core/intake.py`, cambiar `POR_DOMINIO` y `POR_TIPO` para
-que dejen de devolver `None`.
+Las dos taxonomias viven en repos y lenguajes distintos, asi que es facil
+ampliar una y olvidar la otra. Cuando eso pasa **nada falla**: el pipeline
+simplemente deja de registrar incidentes en Convex, en silencio. Ese test lee la
+allowlist del TypeScript y comprueba tres cosas:
 
-Hay tests que afirman la lista actual (`tests/domain/domain.test.ts`,
-`tests/detections/detections.test.ts`), asi que habra que actualizarlos.
+- que toda categoria permitida tiene regla de severidad (que falla cerrada)
+- que el lado Python refleja exactamente esa allowlist
+- que **todo tipo de incidente de todo dominio tiene destino**
 
-**No lo he aplicado yo**: es codigo de la otra mitad del equipo, cambia una
-politica versionada y afecta a sus tests. Queda listo para que sea una decision
-de dos minutos, no una tarde de arqueologia.
+Del lado de Convex, `tests/domain/domain.test.ts` comprueba lo mismo desde
+dentro con `has a severity rule for every allowed category`.
 
 ---
 

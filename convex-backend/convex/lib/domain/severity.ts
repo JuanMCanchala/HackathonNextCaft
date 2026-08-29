@@ -1,13 +1,23 @@
 import type { NormalizedCategory } from "./normalize";
 
-export const SEVERITY_RULE_VERSION = "sev-v1";
+// sev-v2 anade robo, agresion y falta de EPP. Se sube la version en vez de
+// editar sev-v1 porque la spec exige versionar la politica antes de
+// aplicarla: un incidente ya guardado debe seguir explicandose con la regla
+// que lo clasifico.
+export const SEVERITY_RULE_VERSION = "sev-v2";
 
 export type OperationalSeverity = "low" | "medium" | "high" | "critical";
 
-const SEV_V1: Record<NormalizedCategory, OperationalSeverity> = {
+const SEV_V2: Record<NormalizedCategory, OperationalSeverity> = {
+  // Riesgo inmediato para la integridad de una persona.
   fall: "critical",
+  violence: "critical",
   smoke: "high",
   intrusion: "high",
+  // Perdida economica, sin riesgo para nadie.
+  theft: "medium",
+  // Incumplimiento a corregir, no una emergencia.
+  ppe_missing: "low",
 };
 
 export type SeverityResult = {
@@ -26,7 +36,7 @@ export function resolveSeverity(
   if (ruleVersion !== SEVERITY_RULE_VERSION) {
     throw new Error(`Unknown severity rule version: ${ruleVersion}`);
   }
-  const severity = SEV_V1[category as NormalizedCategory];
+  const severity = SEV_V2[category as NormalizedCategory];
   if (severity === undefined) {
     throw new Error(`No severity rule for category: ${category}`);
   }
