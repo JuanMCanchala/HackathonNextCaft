@@ -38,15 +38,22 @@ RECIPES: dict[str, dict] = {
         "pos": ["shoplifting", "theft", "stealing", "suspicious", "positive"],
         "neg": ["normal", "non_shoplifting", "nonshoplifting", "negative"],
         "size": "505 MB",
-        "note": "CCTV, mayo 2026. Pensado para el mismo enfoque YOLO+VLM.",
+        "note": "Solo 8 videos y sujetos sinteticos: sirve de humo, no de medida.",
     },
     "scvd": {
         "slug": "toluwaniaremu/smartcity-cctv-violence-detection-dataset-scvd",
         "domain": "violence",
-        "pos": ["violence", "violent", "fight"],
-        "neg": ["normal", "nonviolence", "non_violence", "weaponized"],
+        "pos": ["violence"],
+        "neg": ["normal"],
+        # Solo los clips completos. `SCVD_converted_sec_split` son trozos de 1 s
+        # exacto, y las senales temporales necesitan ventanas de hasta 3 s: sobre
+        # ellos el recall saldria casi cero por falta de tiempo, no por fallar.
+        "subtree": "SCVD_converted",
+        # `Weaponized` queda fuera a proposito. Meterlo entre los negativos
+        # contaria como falso positivo que el sistema reaccione ante alguien
+        # empunando un arma, que es justo lo que deberia hacer.
         "size": "1.1 GB",
-        "note": "CCTV de ciudad. El mas parecido a donde se desplegaria esto.",
+        "note": "CCTV de ciudad, 111 Violence / 246 Normal tras filtrar.",
     },
     "rlvs": {
         "slug": "mohamedmustafa/real-life-violence-situations-dataset",
@@ -135,13 +142,20 @@ def link_or_copy(src: Path, dst: Path) -> str:
 
 
 def prepare(raw: Path, recipe: dict, dest: Path, limit: int) -> tuple[int, int]:
-    pos_dirs = find_class_dirs(raw, recipe["pos"])
-    neg_dirs = find_class_dirs(raw, recipe["neg"])
+    root = raw
+    if recipe.get("subtree"):
+        matches = [p for p in raw.rglob(recipe["subtree"]) if p.is_dir()]
+        if matches:
+            root = matches[0]
+        else:
+            print(f"  aviso: no encontre el subarbol {recipe['subtree']}")
+    pos_dirs = find_class_dirs(root, recipe["pos"])
+    neg_dirs = find_class_dirs(root, recipe["neg"])
     if not pos_dirs and not neg_dirs:
         print(f"\n  No encontre las carpetas de clase dentro de {raw}.")
         print(f"  Buscaba: positivas {recipe['pos']}, negativas {recipe['neg']}")
         print("  Arbol de primer nivel:")
-        for p in sorted(raw.iterdir())[:15]:
+        for p in sorted(root.iterdir())[:15]:
             print("   ", p.name + ("/" if p.is_dir() else ""))
         print("\n  Ajusta 'pos'/'neg' en RECIPES o usa tools/prepare_dataset.py.")
         return 0, 0
