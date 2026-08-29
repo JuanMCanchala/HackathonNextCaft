@@ -1,0 +1,57 @@
+services:
+  backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${PORT:-3210}:3210"
+      - "${SITE_PROXY_PORT:-3211}:3211"
+    volumes:
+      - convex_data:/convex/data
+    environment:
+      CONVEX_CLOUD_ORIGIN: "${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:${PORT:-3210}}"
+      CONVEX_SITE_ORIGIN: "${CONVEX_SITE_ORIGIN:-http://127.0.0.1:${SITE_PROXY_PORT:-3211}}"
+      DISABLE_METRICS_ENDPOINT: "${DISABLE_METRICS_ENDPOINT:-true}"
+      DOCUMENT_RETENTION_DELAY: "${DOCUMENT_RETENTION_DELAY:-172800}"
+      REDACT_LOGS_TO_CLIENT: "${REDACT_LOGS_TO_CLIENT:-true}"
+      RUST_LOG: "${RUST_LOG:-info}"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3210/version"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    profiles: ["dashboard"]
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${DASHBOARD_PORT:-6791}:6791"
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: "${NEXT_PUBLIC_DEPLOYMENT_URL:-http://127.0.0.1:${PORT:-3210}}"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:-}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -n \"$$TUNNEL_TOKEN\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  convex_data:
+    name: "${COMPOSE_PROJECT_NAME:-sentra}_convex_data"
