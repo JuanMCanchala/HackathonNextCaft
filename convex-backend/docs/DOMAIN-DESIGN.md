@@ -12,38 +12,38 @@
 
 ## Bounded contexts
 
-| Context | Owns | Does not own |
-|---|---|---|
-| Workspace & Access | workspaces, memberships, roles, API keys, audit identity | model interpretation |
-| Camera Registry | camera metadata, administrative status, heartbeat-derived connectivity | video capture/control |
-| Detection Intake | normalized detections, source idempotency, adapter validation | incident workflow decisions |
-| Incident Operations | grouping, incident lifecycle, severity, assignments, timeline | raw model internals |
-| Evidence | snapshot/reference metadata, access grants, retention | continuous media |
-| Notification Delivery | alerts, webhook subscriptions, attempts, delivery state | incident truth |
-| Integration | public HTTP and MCP adapters | direct persistence |
+| Context               | Owns                                                                   | Does not own                |
+| --------------------- | ---------------------------------------------------------------------- | --------------------------- |
+| Workspace & Access    | workspaces, memberships, roles, API keys, audit identity               | model interpretation        |
+| Camera Registry       | camera metadata, administrative status, heartbeat-derived connectivity | video capture/control       |
+| Detection Intake      | normalized detections, source idempotency, adapter validation          | incident workflow decisions |
+| Incident Operations   | grouping, incident lifecycle, severity, assignments, timeline          | raw model internals         |
+| Evidence              | snapshot/reference metadata, access grants, retention                  | continuous media            |
+| Notification Delivery | alerts, webhook subscriptions, attempts, delivery state                | incident truth              |
+| Integration           | public HTTP and MCP adapters                                           | direct persistence          |
 
 ## Ubiquitous language
 
-| Term | Precise meaning |
-|---|---|
-| Workspace | A customer-owned operational boundary. All workspace data is isolated from other workspaces. |
-| Tenant | Internal synonym/identifier for workspace ownership and authorization. Not a user role. |
-| Detection | A technical observation received from a detector for a camera at a point in time. |
-| Incident | An operational entity grouping similar detections that requires review or records a condition. |
-| Alert | A notification attempt or notification fact emitted because of an incident/event. It is not the incident itself. |
-| Evidence | A snapshot or external reference supporting a detection/incident. |
-| Category | Normalized classification such as intrusion, smoke, or fall; taxonomy is workspace-configurable but bounded. |
-| Model confidence | Detector-provided numeric confidence, preserved as source data. |
-| Operational severity | Workspace-rule/operator value describing business urgency; independent of confidence. |
-| Administrative status | Camera intent: `active`, `paused`, or `disabled`. |
-| Connectivity | Observed camera reachability: `online`, `offline`, `degraded`, or `unknown`. |
-| Source event ID | Provider/model identity used to deduplicate an observation within a source/workspace namespace. |
-| Evidence reference | Storage key or external reference, never a browser-held privileged credential. |
-| Triage | Human/system classification and enrichment before acknowledgement; it is not confirmation. |
-| Acknowledge | An authorized actor accepts responsibility for reviewing an incident. |
-| Resolve | An authorized actor declares the operational issue addressed. |
-| Dismiss | An authorized actor declares the incident not actionable/invalid. |
-| Alert delivery | One outbound attempt lifecycle for an alert event, with signature and retry state. |
+| Term                  | Precise meaning                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Workspace             | A customer-owned operational boundary. All workspace data is isolated from other workspaces.                     |
+| Tenant                | Internal synonym/identifier for workspace ownership and authorization. Not a user role.                          |
+| Detection             | A technical observation received from a detector for a camera at a point in time.                                |
+| Incident              | An operational entity grouping similar detections that requires review or records a condition.                   |
+| Alert                 | A notification attempt or notification fact emitted because of an incident/event. It is not the incident itself. |
+| Evidence              | A snapshot or external reference supporting a detection/incident.                                                |
+| Category              | Normalized classification such as intrusion, smoke, or fall; taxonomy is workspace-configurable but bounded.     |
+| Model confidence      | Detector-provided numeric confidence, preserved as source data.                                                  |
+| Operational severity  | Workspace-rule/operator value describing business urgency; independent of confidence.                            |
+| Administrative status | Camera intent: `active`, `paused`, or `disabled`.                                                                |
+| Connectivity          | Observed camera reachability: `online`, `offline`, `degraded`, or `unknown`.                                     |
+| Source event ID       | Provider/model identity used to deduplicate an observation within a source/workspace namespace.                  |
+| Evidence reference    | Storage key or external reference, never a browser-held privileged credential.                                   |
+| Triage                | Human/system classification and enrichment before acknowledgement; it is not confirmation.                       |
+| Acknowledge           | An authorized actor accepts responsibility for reviewing an incident.                                            |
+| Resolve               | An authorized actor declares the operational issue addressed.                                                    |
+| Dismiss               | An authorized actor declares the incident not actionable/invalid.                                                |
+| Alert delivery        | One outbound attempt lifecycle for an alert event, with signature and retry state.                               |
 
 ## Entities and value objects
 
@@ -87,26 +87,26 @@ An Alert is the notification fact associated with an incident/domain event. A De
 
 ## Aggregates and invariants
 
-| Aggregate | Root responsibility | Key invariants |
-|---|---|---|
-| Workspace | Own settings and policies | Settings cannot grant access across workspace; retention/grouping values are bounded. |
-| Membership | Role assignment | Active membership belongs to one workspace; only permitted admins change roles. |
-| Camera | Registration/status | Camera belongs to one workspace; disabled camera cannot accept ordinary operational processing. |
-| Detection intake | Accept observation | Valid source identity and camera/workspace match; same idempotency key returns same result. |
-| Incident | Operational workflow | State transition is valid and authorized; closed state is not silently reopened by duplicate input. |
-| Evidence | Access/retention | Evidence link is workspace-scoped and access is time-limited/authorized. |
-| API key | Credential lifecycle | Store hash only; revoked/expired keys cannot authorize requests. |
-| Delivery | Delivery lifecycle | Event ID is unique per subscription/version; retries are bounded and auditable. |
+| Aggregate        | Root responsibility       | Key invariants                                                                                      |
+| ---------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| Workspace        | Own settings and policies | Settings cannot grant access across workspace; retention/grouping values are bounded.               |
+| Membership       | Role assignment           | Active membership belongs to one workspace; only permitted admins change roles.                     |
+| Camera           | Registration/status       | Camera belongs to one workspace; disabled camera cannot accept ordinary operational processing.     |
+| Detection intake | Accept observation        | Valid source identity and camera/workspace match; same idempotency key returns same result.         |
+| Incident         | Operational workflow      | State transition is valid and authorized; closed state is not silently reopened by duplicate input. |
+| Evidence         | Access/retention          | Evidence link is workspace-scoped and access is time-limited/authorized.                            |
+| API key          | Credential lifecycle      | Store hash only; revoked/expired keys cannot authorize requests.                                    |
+| Delivery         | Delivery lifecycle        | Event ID is unique per subscription/version; retries are bounded and auditable.                     |
 
 ### Incident transition table
 
-| From | Allowed to | Actor |
-|---|---|---|
-| detected | triaged, dismissed | operator, workspace_admin, authorized integration |
-| triaged | acknowledged, dismissed | operator, workspace_admin, authorized integration |
-| acknowledged | resolved, dismissed | operator, workspace_admin, authorized integration |
-| resolved | — | immutable terminal state in MVP |
-| dismissed | — | immutable terminal state in MVP |
+| From         | Allowed to              | Actor                                             |
+| ------------ | ----------------------- | ------------------------------------------------- |
+| detected     | triaged, dismissed      | operator, workspace_admin, authorized integration |
+| triaged      | acknowledged, dismissed | operator, workspace_admin, authorized integration |
+| acknowledged | resolved, dismissed     | operator, workspace_admin, authorized integration |
+| resolved     | —                       | immutable terminal state in MVP                   |
+| dismissed    | —                       | immutable terminal state in MVP                   |
 
 A duplicate detection may update `lastObservedAt` or link to an open incident, but must not bypass human state semantics. Reopening is a future explicit use case, not an incidental side effect.
 

@@ -19,16 +19,16 @@ Sentra normalizes model detections, preserves the raw observation, groups simila
 
 ## MVP goals and success criteria
 
-| Goal | Acceptance criterion |
-|---|---|
-| Detect | A valid model event creates exactly one durable detection and contributes to an incident. |
-| Group | Similar camera/category observations inside a configurable 30–60 second window group into one incident; raw detections remain queryable. |
-| Operate | Authorized users can triage, acknowledge, resolve, or dismiss; every transition is audited. |
-| Explain | Incident detail shows operational severity, model confidence, source/model versions, timestamps, and evidence references. |
-| Isolate | No authenticated user, API key, webhook, or MCP call can read or mutate another workspace. |
-| Update | Angular receives reactive updates through ConvexClient; public integrations can consume signed, retried, idempotent webhooks. |
-| Secure | Privileged keys are never sent to the browser; evidence access is temporary and authorized. |
-| Demonstrate | The happy path works end-to-end in a seeded hackathon workspace with observable request/event IDs. |
+| Goal        | Acceptance criterion                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Detect      | A valid model event creates exactly one durable detection and contributes to an incident.                                                |
+| Group       | Similar camera/category observations inside a configurable 30–60 second window group into one incident; raw detections remain queryable. |
+| Operate     | Authorized users can triage, acknowledge, resolve, or dismiss; every transition is audited.                                              |
+| Explain     | Incident detail shows operational severity, model confidence, source/model versions, timestamps, and evidence references.                |
+| Isolate     | No authenticated user, API key, webhook, or MCP call can read or mutate another workspace.                                               |
+| Update      | Angular receives reactive updates through ConvexClient; public integrations can consume signed, retried, idempotent webhooks.            |
+| Secure      | Privileged keys are never sent to the browser; evidence access is temporary and authorized.                                              |
+| Demonstrate | The happy path works end-to-end in a seeded hackathon workspace with observable request/event IDs.                                       |
 
 ## Actors and roles
 
@@ -97,13 +97,13 @@ Sentra normalizes model detections, preserves the raw observation, groups simila
 
 ## API and integration summary
 
-| Surface | Responsibility | Authentication |
-|---|---|---|
-| Public `/v1` | Workspaces, cameras, incidents, evidence, stats, API keys, webhooks | Clerk session/JWT or scoped service API key |
-| Internal `/internal/v1/detections` | Normalized model ingestion | Internal service credential/network policy; never browser-exposed |
-| Convex realtime | Angular reactive operational reads | Clerk-authenticated Convex client and workspace authorization |
-| Webhooks | Outbound integration events | HMAC signature, event ID, retries |
-| MCP | Tool-shaped adapter for status, incidents, stats, snapshots, limited actions | Sentra API credentials; same use-case authorization |
+| Surface                            | Responsibility                                                               | Authentication                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Public `/v1`                       | Workspaces, cameras, incidents, evidence, stats, API keys, webhooks          | Clerk session/JWT or scoped service API key                       |
+| Internal `/internal/v1/detections` | Normalized model ingestion                                                   | Internal service credential/network policy; never browser-exposed |
+| Convex realtime                    | Angular reactive operational reads                                           | Clerk-authenticated Convex client and workspace authorization     |
+| Webhooks                           | Outbound integration events                                                  | HMAC signature, event ID, retries                                 |
+| MCP                                | Tool-shaped adapter for status, incidents, stats, snapshots, limited actions | Sentra API credentials; same use-case authorization               |
 
 See [DOMAIN-DESIGN.md](DOMAIN-DESIGN.md), [USE-CASES.md](USE-CASES.md), [API-SITEMAP.md](API-SITEMAP.md), and the frontend validation contract [API-CONTRACT.md](API-CONTRACT.md) for contracts and boundaries.
 
@@ -131,15 +131,15 @@ See [DOMAIN-DESIGN.md](DOMAIN-DESIGN.md), [USE-CASES.md](USE-CASES.md), [API-SIT
 
 ## Risks and mitigations
 
-| Risk | Mitigation for MVP |
-|---|---|
-| False positives or model drift | Preserve confidence/version/evidence; rules and human state remain separate; audit overrides. |
-| Duplicate/out-of-order events | Source identity plus idempotency records; deterministic grouping and late-event policy. |
-| Cross-tenant leakage | Central authorization helpers, tenant-first indexes, negative tests, no client-supplied trust. |
-| Evidence URL leakage | Short-lived authorized access, no privileged keys in browser, retention policy. |
-| Webhook replay/failure | HMAC with timestamp tolerance, event IDs, retry/backoff, delivery ledger. |
-| Convex hot paths or index growth | Cursor pagination, bounded queries, explicit indexes, retention, load test after demo. |
-| Ambiguous model contract | Versioned normalized adapter owned by backend; model-specific payload stays behind it. |
+| Risk                             | Mitigation for MVP                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| False positives or model drift   | Preserve confidence/version/evidence; rules and human state remain separate; audit overrides.  |
+| Duplicate/out-of-order events    | Source identity plus idempotency records; deterministic grouping and late-event policy.        |
+| Cross-tenant leakage             | Central authorization helpers, tenant-first indexes, negative tests, no client-supplied trust. |
+| Evidence URL leakage             | Short-lived authorized access, no privileged keys in browser, retention policy.                |
+| Webhook replay/failure           | HMAC with timestamp tolerance, event IDs, retry/backoff, delivery ledger.                      |
+| Convex hot paths or index growth | Cursor pagination, bounded queries, explicit indexes, retention, load test after demo.         |
+| Ambiguous model contract         | Versioned normalized adapter owned by backend; model-specific payload stays behind it.         |
 
 ## Future-safe evolution
 

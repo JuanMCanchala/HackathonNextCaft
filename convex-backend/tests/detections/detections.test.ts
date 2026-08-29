@@ -60,9 +60,7 @@ describe("detections.acceptNormalized", () => {
   }
 
   it("is not exposed on the public api surface", () => {
-    expect(
-      Object.prototype.hasOwnProperty.call(api, "detections"),
-    ).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(api, "detections")).toBe(false);
   });
 
   it("rejects workspace/camera ownership mismatch before write", async () => {
@@ -77,9 +75,7 @@ describe("detections.acceptNormalized", () => {
       { code: "NOT_FOUND" },
     );
 
-    const detections = await t.run(async (ctx) =>
-      ctx.db.query("detections").collect(),
-    );
+    const detections = await t.run(async (ctx) => ctx.db.query("detections").collect());
     expect(detections).toHaveLength(0);
   });
 
@@ -89,10 +85,7 @@ describe("detections.acceptNormalized", () => {
       adminStatus: "disabled",
     });
     await expectApiError(
-      t.mutation(
-        internal.detections.acceptNormalized,
-        observationArgs(workspaceId, cameraId),
-      ),
+      t.mutation(internal.detections.acceptNormalized, observationArgs(workspaceId, cameraId)),
       { code: "FORBIDDEN" },
     );
   });
@@ -177,9 +170,7 @@ describe("detections.acceptNormalized", () => {
     expect(late.disposition).toBe("created");
     expect(late.incidentId).not.toBe(first.incidentId);
 
-    const detections = await t.run(async (ctx) =>
-      ctx.db.query("detections").collect(),
-    );
+    const detections = await t.run(async (ctx) => ctx.db.query("detections").collect());
     expect(detections).toHaveLength(3);
   });
 
@@ -196,15 +187,9 @@ describe("detections.acceptNormalized", () => {
     expect(replay.incidentId).toBe(first.incidentId);
     expect(replay.requestId).toBe(first.requestId);
 
-    const detections = await t.run(async (ctx) =>
-      ctx.db.query("detections").collect(),
-    );
-    const incidents = await t.run(async (ctx) =>
-      ctx.db.query("incidents").collect(),
-    );
-    const audits = await t.run(async (ctx) =>
-      ctx.db.query("auditEntries").collect(),
-    );
+    const detections = await t.run(async (ctx) => ctx.db.query("detections").collect());
+    const incidents = await t.run(async (ctx) => ctx.db.query("incidents").collect());
+    const audits = await t.run(async (ctx) => ctx.db.query("auditEntries").collect());
     expect(detections).toHaveLength(1);
     expect(incidents).toHaveLength(1);
     expect(audits).toHaveLength(1);

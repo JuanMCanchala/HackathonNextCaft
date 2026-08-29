@@ -55,9 +55,7 @@ describe("lib/authz", () => {
     const asViewer = t.withIdentity(VIEWER_IDENTITY);
     const { requireActiveMembership } = await import("../convex/lib/authz");
     await expectApiError(
-      asViewer.query(async (ctx) =>
-        requireActiveMembership(ctx, workspaceId as Id<"workspaces">),
-      ),
+      asViewer.query(async (ctx) => requireActiveMembership(ctx, workspaceId as Id<"workspaces">)),
       { code: "FORBIDDEN" },
     );
   });
@@ -120,10 +118,7 @@ describe("lib/authz", () => {
     const { requireRole } = await import("../convex/lib/authz");
     await expectApiError(
       asViewer.query(async (ctx) =>
-        requireRole(ctx, workspaceId as Id<"workspaces">, [
-          "operator",
-          "workspace_admin",
-        ]),
+        requireRole(ctx, workspaceId as Id<"workspaces">, ["operator", "workspace_admin"]),
       ),
       { code: "FORBIDDEN" },
     );
@@ -195,9 +190,7 @@ describe("lib/authz", () => {
     const asForeign = t.withIdentity(FOREIGN_IDENTITY);
     const { requireActiveMembership } = await import("../convex/lib/authz");
     await expectApiError(
-      asForeign.query(async (ctx) =>
-        requireActiveMembership(ctx, workspaceId as Id<"workspaces">),
-      ),
+      asForeign.query(async (ctx) => requireActiveMembership(ctx, workspaceId as Id<"workspaces">)),
       { code: "NOT_FOUND" },
     );
   });

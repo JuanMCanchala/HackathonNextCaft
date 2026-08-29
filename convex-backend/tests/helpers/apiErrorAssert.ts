@@ -21,9 +21,7 @@ export function getApiErrorData(error: unknown): {
     typeof data.requestId !== "string" ||
     data.requestId.length < 1
   ) {
-    throw new Error(
-      `ConvexError data is not ApiError-shaped: ${JSON.stringify(data)}`,
-    );
+    throw new Error(`ConvexError data is not ApiError-shaped: ${JSON.stringify(data)}`);
   }
   return {
     code: data.code,
@@ -41,10 +39,7 @@ export async function expectApiError(
     await promise;
     throw new Error(`Expected ApiError ${expected.code} but promise resolved`);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.startsWith("Expected ApiError")
-    ) {
+    if (error instanceof Error && error.message.startsWith("Expected ApiError")) {
       throw error;
     }
     const data = getApiErrorData(error);

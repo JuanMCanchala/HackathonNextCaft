@@ -16,6 +16,7 @@ export const modules: Record<string, () => Promise<unknown>> = {
   "../../convex/detections.ts": () => import("../../convex/detections"),
   "../../convex/incidents.ts": () => import("../../convex/incidents"),
   "../../convex/seed.ts": () => import("../../convex/seed"),
+  "../../convex/http.ts": () => import("../../convex/http"),
   "../../convex/lib/errors.ts": () => import("../../convex/lib/errors"),
   "../../convex/lib/authz.ts": () => import("../../convex/lib/authz"),
   "../../convex/lib/time.ts": () => import("../../convex/lib/time"),

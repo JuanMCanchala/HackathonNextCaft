@@ -27,24 +27,16 @@ describe("normalizeObservation", () => {
       }
       expect(result.value.confidence).toBe(confidence);
       expect(result.value.category).toBe("fall");
-      expect(result.value.occurredAtMs).toBe(
-        Date.parse("2026-08-29T12:00:00.000Z"),
-      );
+      expect(result.value.occurredAtMs).toBe(Date.parse("2026-08-29T12:00:00.000Z"));
     }
   });
 
   it("rejects confidence outside [0,1], bad timestamp, unknown category", () => {
     expect(normalizeObservation({ ...base, confidence: 1.1 }).ok).toBe(false);
     expect(normalizeObservation({ ...base, confidence: -0.01 }).ok).toBe(false);
-    expect(normalizeObservation({ ...base, confidence: "0.5" as never }).ok).toBe(
-      false,
-    );
-    expect(normalizeObservation({ ...base, timestamp: "not-a-date" }).ok).toBe(
-      false,
-    );
-    expect(normalizeObservation({ ...base, category: "shoplifting" }).ok).toBe(
-      false,
-    );
+    expect(normalizeObservation({ ...base, confidence: "0.5" as never }).ok).toBe(false);
+    expect(normalizeObservation({ ...base, timestamp: "not-a-date" }).ok).toBe(false);
+    expect(normalizeObservation({ ...base, category: "shoplifting" }).ok).toBe(false);
   });
 
   it("rejects privileged evidence refs", () => {
@@ -181,9 +173,7 @@ describe("resolveSeverity", () => {
 
   it("fails closed for missing rule", () => {
     expect(() => resolveSeverity("unknown")).toThrow(/No severity rule/);
-    expect(() => resolveSeverity("fall", "sev-v0")).toThrow(
-      /Unknown severity rule/,
-    );
+    expect(() => resolveSeverity("fall", "sev-v0")).toThrow(/Unknown severity rule/);
   });
 });
 
@@ -194,16 +184,10 @@ describe("assertTransition", () => {
   });
 
   it("rejects ack/resolve/dismiss and other paths", () => {
-    expect(() => assertTransition("detected", "acknowledged")).toThrow(
-      /unavailable/,
-    );
+    expect(() => assertTransition("detected", "acknowledged")).toThrow(/unavailable/);
     expect(() => assertTransition("detected", "resolved")).toThrow(/unavailable/);
-    expect(() => assertTransition("detected", "dismissed")).toThrow(
-      /unavailable/,
-    );
-    expect(() => assertTransition("triaged", "acknowledged")).toThrow(
-      /unavailable/,
-    );
+    expect(() => assertTransition("detected", "dismissed")).toThrow(/unavailable/);
+    expect(() => assertTransition("triaged", "acknowledged")).toThrow(/unavailable/);
     expect(() => assertTransition("triaged", "detected")).toThrow(/Invalid/);
   });
 });

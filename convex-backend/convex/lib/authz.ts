@@ -22,9 +22,7 @@ export async function requireActiveMembership(
   const membership = await ctx.db
     .query("memberships")
     .withIndex("by_token_and_workspace", (q) =>
-      q
-        .eq("tokenIdentifier", identity.tokenIdentifier)
-        .eq("workspaceId", workspaceId),
+      q.eq("tokenIdentifier", identity.tokenIdentifier).eq("workspaceId", workspaceId),
     )
     .unique();
 
@@ -55,9 +53,7 @@ export async function listActiveMembershipsForIdentity(
   const identity = await requireIdentity(ctx);
   const memberships = await ctx.db
     .query("memberships")
-    .withIndex("by_token_and_workspace", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
+    .withIndex("by_token_and_workspace", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
     .take(100);
   return memberships.filter((membership) => membership.status === "active");
 }

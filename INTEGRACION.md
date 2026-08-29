@@ -133,6 +133,38 @@ ode_modules\.bin\convex env set CLERK_JWT_ISSUER_DOMAIN <nuevo>
 ode_modules\.bin\convex env set CLERK_JWT_APPLICATION_ID convex
 ```
 
+### Circuito cerrado y verificado
+
+El intake era `internalMutation` y **no habia router HTTP**, asi que el pipeline
+de vision no tenia por donde entrar: su propia spec pedia un "authenticated
+internal adapter" que estaba sin implementar. Ahora existe en `convex/http.ts`.
+
+Autentica con `INTAKE_SERVICE_TOKEN` (token de servicio, no Clerk), asi que un
+navegador con sesion de Clerk no puede llamarlo, que es lo que exige la spec. Si
+el token no esta configurado el endpoint responde 503: falla cerrado, nunca
+abierto.
+
+Probado de punta a punta contra el deployment en la nube:
+
+| | |
+|---|---|
+| Incidente enviado desde Python | `theft`, severidad `medium` por `sev-v2`, estado `detected` |
+| Reenvio del mismo evento | no duplica; una sola deteccion |
+| Tests del adaptador | 7, incluidos los negativos de autenticacion |
+| Suite completa | 66 tests en 12 suites |
+
+Los datos sembrados para la demo:
+
+```
+workspace  k97eyfq3jatnc7jfgh2pj0ptah8dd2q6   "Sentinel Demo"
+camara     j97ap7zy1d9bsen8fy0x4wpq8d8dd9xy   "Entrada"
+camara     j97bf9hd9raf97nvqbp09vpths8dcfxx   "Almacen"
+```
+
+Estan ya en el `.env` de la raiz, con el token de servicio. Falta solo
+`PUBLIC_BASE_URL` apuntando a un tunel para que los `evidenceRefs` sean
+descargables desde fuera.
+
 ### Lo que falta para produccion
 
 `convex deploy` publica al deployment de **produccion** del proyecto, que aun no

@@ -24,8 +24,7 @@ export function toCamera(doc: Doc<"cameras">): CameraDto {
     location: doc.location,
     adminStatus: doc.adminStatus,
     connectivity: doc.connectivity,
-    lastHeartbeatAt:
-      doc.lastHeartbeatAt === null ? null : toRfc3339(doc.lastHeartbeatAt),
+    lastHeartbeatAt: doc.lastHeartbeatAt === null ? null : toRfc3339(doc.lastHeartbeatAt),
     version: doc.version,
     createdAt: toRfc3339(doc.createdAt),
     updatedAt: toRfc3339(doc.updatedAt),

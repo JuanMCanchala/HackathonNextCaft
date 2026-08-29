@@ -152,15 +152,7 @@
     "membership": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "workspaceId",
-        "subjectId",
-        "role",
-        "status",
-        "createdAt",
-        "updatedAt"
-      ],
+      "required": ["id", "workspaceId", "subjectId", "role", "status", "createdAt", "updatedAt"],
       "properties": {
         "id": { "$ref": "#/$defs/opaqueId" },
         "workspaceId": { "$ref": "#/$defs/opaqueId" },

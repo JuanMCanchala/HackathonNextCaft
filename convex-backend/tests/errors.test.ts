@@ -1,9 +1,4 @@
-import {
-  ERROR_CODES,
-  createRequestId,
-  throwApiError,
-  isApiErrorData,
-} from "../convex/lib/errors";
+import { ERROR_CODES, createRequestId, throwApiError, isApiErrorData } from "../convex/lib/errors";
 import { ConvexError } from "convex/values";
 import { getApiErrorData } from "./helpers/apiErrorAssert";
 
@@ -64,9 +59,7 @@ describe("lib/errors ApiError", () => {
     } catch (error) {
       const data = getApiErrorData(error);
       expect(data.code).toBe("VALIDATION_ERROR");
-      expect(data.details).toEqual([
-        { path: "workspaceId", message: "Invalid id" },
-      ]);
+      expect(data.details).toEqual([{ path: "workspaceId", message: "Invalid id" }]);
     }
   });
 });

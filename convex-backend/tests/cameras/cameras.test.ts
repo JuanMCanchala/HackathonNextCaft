@@ -9,8 +9,7 @@ import {
 import { expectApiError } from "../helpers/apiErrorAssert";
 import schemas from "../../docs/api-contract.schemas.json" with { type: "json" };
 
-const RFC3339 =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 const CAMERA_ADMIN = /^(active|paused|disabled)$/;
 const CAMERA_CONNECTIVITY = /^(online|offline|degraded|unknown)$/;
@@ -36,16 +35,13 @@ function assertCamera(value: unknown): void {
   expect((camera.externalId as string).length).toBeLessThanOrEqual(128);
   expect((camera.label as string).length).toBeGreaterThan(0);
   expect((camera.label as string).length).toBeLessThanOrEqual(128);
-  expect(
-    camera.location === null || typeof camera.location === "string",
-  ).toBe(true);
+  expect(camera.location === null || typeof camera.location === "string").toBe(true);
   if (typeof camera.location === "string") {
     expect(camera.location.length).toBeLessThanOrEqual(256);
   }
   expect(
     camera.lastHeartbeatAt === null ||
-      (typeof camera.lastHeartbeatAt === "string" &&
-        RFC3339.test(camera.lastHeartbeatAt)),
+      (typeof camera.lastHeartbeatAt === "string" && RFC3339.test(camera.lastHeartbeatAt)),
   ).toBe(true);
   expect(camera.version as number).toBeGreaterThanOrEqual(0);
   expect(Object.keys(camera).sort()).toEqual(
@@ -88,12 +84,8 @@ function assertPageShape(value: unknown): void {
   };
   expect(Array.isArray(page.items)).toBe(true);
   expect(typeof page.hasMore).toBe("boolean");
-  expect(page.nextCursor === null || typeof page.nextCursor === "string").toBe(
-    true,
-  );
-  expect(Object.keys(page).sort()).toEqual(
-    ["hasMore", "items", "nextCursor"].sort(),
-  );
+  expect(page.nextCursor === null || typeof page.nextCursor === "string").toBe(true);
+  expect(Object.keys(page).sort()).toEqual(["hasMore", "items", "nextCursor"].sort());
   expect(schemas.$defs.pageMeta.required).toEqual(
     expect.arrayContaining(["items", "nextCursor", "hasMore"]),
   );
@@ -182,11 +174,7 @@ describe("cameras public API", () => {
 
   it("admin create returns Camera with connectivity unknown and audits", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceId = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     const asAdmin = t.withIdentity(ADMIN_IDENTITY);
     const camera = await asAdmin.mutation(api.cameras.create, {
       workspaceId,
@@ -226,11 +214,7 @@ describe("cameras public API", () => {
 
   it("create throws CONFLICT for duplicate externalId in workspace", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceId = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     const asAdmin = t.withIdentity(ADMIN_IDENTITY);
     await asAdmin.mutation(api.cameras.create, {
       workspaceId,
@@ -249,11 +233,7 @@ describe("cameras public API", () => {
 
   it("create throws VALIDATION_ERROR for empty externalId/label", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceId = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     const asAdmin = t.withIdentity(ADMIN_IDENTITY);
     await expectApiError(
       asAdmin.mutation(api.cameras.create, {
@@ -275,11 +255,7 @@ describe("cameras public API", () => {
 
   it("list/get throw UNAUTHENTICATED without identity", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceId = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     const cameraId = await seedCamera(t, workspaceId, "seeded");
     await expectApiError(
       t.query(api.cameras.list, {
@@ -318,11 +294,7 @@ describe("cameras public API", () => {
   it("list is isolated to caller workspace; foreign get is NOT_FOUND", async () => {
     const t = createTestBackend();
     const workspaceA = await seedMemberWorkspace(t, VIEWER_IDENTITY, "viewer");
-    const workspaceB = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceB = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     await seedCamera(t, workspaceA, "a-1");
     const cameraB = await seedCamera(t, workspaceB, "b-1");
 
@@ -370,11 +342,7 @@ describe("cameras public API", () => {
 
   it("foreign identity cannot create in another's workspace", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      ADMIN_IDENTITY,
-      "workspace_admin",
-    );
+    const workspaceId = await seedMemberWorkspace(t, ADMIN_IDENTITY, "workspace_admin");
     const asForeign = t.withIdentity(FOREIGN_IDENTITY);
     await expectApiError(
       asForeign.mutation(api.cameras.create, {

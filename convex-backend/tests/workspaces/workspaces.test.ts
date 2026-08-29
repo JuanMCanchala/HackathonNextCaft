@@ -9,8 +9,7 @@ import { expectApiError } from "../helpers/apiErrorAssert";
 import type { Id } from "../../convex/_generated/dataModel";
 import schemas from "../../docs/api-contract.schemas.json" with { type: "json" };
 
-const RFC3339 =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 function assertWorkspaceSummary(value: unknown): void {
   expect(value).toEqual(
@@ -66,12 +65,8 @@ function assertPageShape(value: unknown): void {
   };
   expect(Array.isArray(page.items)).toBe(true);
   expect(typeof page.hasMore).toBe("boolean");
-  expect(page.nextCursor === null || typeof page.nextCursor === "string").toBe(
-    true,
-  );
-  expect(Object.keys(page).sort()).toEqual(
-    ["hasMore", "items", "nextCursor"].sort(),
-  );
+  expect(page.nextCursor === null || typeof page.nextCursor === "string").toBe(true);
+  expect(Object.keys(page).sort()).toEqual(["hasMore", "items", "nextCursor"].sort());
   // Schema contract presence check for pageMeta required keys
   expect(schemas.$defs.pageMeta.required).toEqual(
     expect.arrayContaining(["items", "nextCursor", "hasMore"]),
@@ -142,10 +137,7 @@ describe("workspaces public API", () => {
         updatedAt: now,
       });
     });
-    await expectApiError(
-      t.query(api.workspaces.get, { workspaceId }),
-      { code: "UNAUTHENTICATED" },
-    );
+    await expectApiError(t.query(api.workspaces.get, { workspaceId }), { code: "UNAUTHENTICATED" });
   });
 
   it("get throws FORBIDDEN for inactive membership", async () => {
@@ -211,11 +203,7 @@ describe("workspaces public API", () => {
 
   it("get returns WorkspaceDetail for active member", async () => {
     const t = createTestBackend();
-    const workspaceId = await seedMemberWorkspace(
-      t,
-      VIEWER_IDENTITY,
-      "viewer",
-    );
+    const workspaceId = await seedMemberWorkspace(t, VIEWER_IDENTITY, "viewer");
     const asViewer = t.withIdentity(VIEWER_IDENTITY);
     const detail = await asViewer.query(api.workspaces.get, { workspaceId });
     assertWorkspaceDetail(detail);

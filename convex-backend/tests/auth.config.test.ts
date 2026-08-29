@@ -1,7 +1,6 @@
 describe("auth.config Clerk wiring", () => {
   beforeAll(() => {
-    process.env.CLERK_JWT_ISSUER_DOMAIN =
-      "https://premium-humpback-2836.clerk.accounts.dev";
+    process.env.CLERK_JWT_ISSUER_DOMAIN = "https://premium-humpback-2836.clerk.accounts.dev";
     process.env.CLERK_JWT_APPLICATION_ID = "convex";
   });
 

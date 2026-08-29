@@ -4,14 +4,14 @@
 
 ## Test levels and seams
 
-| Level | Seam | Focus |
-|---|---|---|
-| Unit | Pure validators, grouping, severity, transition, signature helpers | deterministic domain behavior |
-| Convex integration | Queries/mutations with isolated test data | persistence, indexes, tenant auth, transactions |
-| HTTP contract | Handler boundary with real schemas | status/error/auth/idempotency/OpenAPI shape |
-| Delivery integration | webhook worker + controllable HTTP receiver | signatures, retries, delivery ledger |
-| MCP contract | adapter through use cases | tool schemas, scopes, structured errors |
-| Security regression | negative cross-tenant and secret/evidence cases | no leakage or privilege escalation |
+| Level                | Seam                                                               | Focus                                           |
+| -------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
+| Unit                 | Pure validators, grouping, severity, transition, signature helpers | deterministic domain behavior                   |
+| Convex integration   | Queries/mutations with isolated test data                          | persistence, indexes, tenant auth, transactions |
+| HTTP contract        | Handler boundary with real schemas                                 | status/error/auth/idempotency/OpenAPI shape     |
+| Delivery integration | webhook worker + controllable HTTP receiver                        | signatures, retries, delivery ledger            |
+| MCP contract         | adapter through use cases                                          | tool schemas, scopes, structured errors         |
+| Security regression  | negative cross-tenant and secret/evidence cases                    | no leakage or privilege escalation              |
 
 Tests assert externally visible behavior, not table names or helper calls. Use real domain logic; mock only unavoidable external systems (Clerk token verification, storage, outbound receiver, clock/randomness with explicit control).
 

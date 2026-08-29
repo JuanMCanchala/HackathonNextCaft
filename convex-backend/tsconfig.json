@@ -19,11 +19,6 @@
     "jsx": "react-jsx",
     "noEmit": true
   },
-  "include": [
-    "convex/**/*.ts",
-    "convex/_generated/**/*.d.ts",
-    "tests/**/*.ts",
-    "jest.config.ts"
-  ],
+  "include": ["convex/**/*.ts", "convex/_generated/**/*.d.ts", "tests/**/*.ts", "jest.config.ts"],
   "exclude": ["node_modules"]
 }

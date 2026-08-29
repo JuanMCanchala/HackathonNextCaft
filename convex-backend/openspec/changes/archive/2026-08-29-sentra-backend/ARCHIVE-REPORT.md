@@ -6,13 +6,13 @@
 
 ## Final state
 
-| Unit | PR | Result |
-|------|----|--------|
-| 1 Foundation | #2 | Merged → `backend` |
-| 2 Cameras + agent harness | #3 | Merged → `backend` |
-| 3 Domain + intake (+5b hygiene) | #4 | Merged → `backend` |
-| 4 Incidents/DTO/chat | #5 | Merged → `backend` |
-| Tracker | #1 `backend` → `main` | Merged at archive close (or immediately after this commit) |
+| Unit                            | PR                    | Result                                                     |
+| ------------------------------- | --------------------- | ---------------------------------------------------------- |
+| 1 Foundation                    | #2                    | Merged → `backend`                                         |
+| 2 Cameras + agent harness       | #3                    | Merged → `backend`                                         |
+| 3 Domain + intake (+5b hygiene) | #4                    | Merged → `backend`                                         |
+| 4 Incidents/DTO/chat            | #5                    | Merged → `backend`                                         |
+| Tracker                         | #1 `backend` → `main` | Merged at archive close (or immediately after this commit) |
 
 All tasks in `tasks.md` are checked (`[x]`), including Phase 8 gates (tests/typecheck/lint; `convex dev --once` env-conditional).
 
