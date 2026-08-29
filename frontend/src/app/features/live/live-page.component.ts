@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnDestroy,
   OnInit,
   inject,
@@ -268,7 +269,11 @@ import {
         } @else {
           <div class="space-y-3">
             @for (evento of eventos(); track evento.id) {
-              <div class="flex flex-wrap items-start gap-4 rounded-lg border border-border p-4">
+              <button
+                type="button"
+                class="flex w-full flex-wrap items-start gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/60 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                (click)="abrir(evento)"
+              >
                 @if (evento.frames.length > 0) {
                   <img
                     [src]="vision.frameUrl(evento.frames[medio(evento)] ?? '')"
@@ -292,16 +297,145 @@ import {
                     </span>
                   </div>
                   @if (evento.verdict?.evidence) {
-                    <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                    <p class="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                       {{ evento.verdict?.evidence }}
                     </p>
                   }
                 </div>
-              </div>
+              </button>
             }
           </div>
         }
       </div>
+
+      <!-- Detalle a pantalla completa. Las tarjetas de la lista recortan el
+           analisis a tres lineas y el fotograma a una miniatura; aqui se ve la
+           escena en grande, los fotogramas uno a uno y las senales que hicieron
+           disparar al filtro. -->
+      @if (detalle(); as ev) {
+        <div
+          class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/90 p-4 backdrop-blur-sm sm:p-8"
+          (click)="cerrar()"
+        >
+          <div
+            class="sentra-panel w-full max-w-4xl overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Detalle de la deteccion"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <span
+                  class="rounded px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider"
+                  [class]="claseEstado(ev)"
+                >
+                  {{ etiquetaEstado(ev) }}
+                </span>
+                <span class="font-display text-base font-semibold text-foreground">
+                  {{ ev.verdict?.incident_type ?? 'analizando' }}
+                </span>
+                @if (ev.verdict) {
+                  <span class="font-mono text-xs text-muted-foreground">
+                    confianza {{ (ev.verdict.confidence * 100).toFixed(0) }}%
+                  </span>
+                }
+              </div>
+              <button
+                type="button"
+                class="rounded-md border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                (click)="cerrar()"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            @if (ev.frames.length > 0) {
+              <div class="bg-black">
+                <div
+                  class="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-[11px] uppercase tracking-widest"
+                >
+                  <span class="text-muted-foreground">{{ ev.camera }} · {{ ev.source }}</span>
+                  <span class="text-foreground/80">
+                    fotograma {{ indice() + 1 }} / {{ ev.frames.length }}
+                  </span>
+                </div>
+                <img
+                  [src]="vision.frameUrl(ev.frames[indice()] ?? '')"
+                  alt="Fotograma de la deteccion"
+                  class="block max-h-[52vh] w-full object-contain"
+                />
+                @if (ev.frames.length > 1) {
+                  <div class="flex flex-wrap gap-1.5 border-t border-border p-3">
+                    @for (f of ev.frames; track f; let i = $index) {
+                      <button
+                        type="button"
+                        class="h-12 w-16 overflow-hidden rounded border transition-colors"
+                        [class.border-primary]="i === indice()"
+                        [class.border-border]="i !== indice()"
+                        (click)="indice.set(i)"
+                      >
+                        <img [src]="vision.frameUrl(f)" alt="" class="h-full w-full object-cover" />
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="space-y-5 p-5">
+              @if (ev.verdict?.evidence) {
+                <div>
+                  <p
+                    class="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                  >
+                    Análisis de la escena
+                  </p>
+                  <p class="max-w-[68ch] leading-relaxed text-foreground">
+                    {{ ev.verdict?.evidence }}
+                  </p>
+                </div>
+              }
+
+              <div>
+                <p
+                  class="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                >
+                  Señales que hicieron disparar el filtro · puntuación
+                  {{ ev.gate_score.toFixed(2) }}
+                </p>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  @for (senal of senalesDe(ev.signals); track senal[0]) {
+                    <div class="flex items-center gap-3">
+                      <span class="w-28 font-mono text-xs text-muted-foreground">
+                        {{ senal[0] }}
+                      </span>
+                      <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          class="h-full rounded-full bg-primary"
+                          [style.width.%]="Math.min(100, senal[1] * 100)"
+                        ></div>
+                      </div>
+                      <span class="w-10 text-right font-mono text-xs text-foreground">
+                        {{ senal[1].toFixed(2) }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              @if (ev.status === 'dismissed') {
+                <p
+                  class="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground"
+                >
+                  El filtro disparó, pero el verificador lo descartó: no se registró incidente ni
+                  se envió aviso. Es el trabajo que evita las falsas alarmas.
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
@@ -318,6 +452,8 @@ export class LivePageComponent implements OnInit, OnDestroy {
   readonly archivo = signal<File | null>(null);
   readonly subiendo = signal(false);
   readonly errorSubida = signal('');
+  readonly detalle = signal<VisionEvent | null>(null);
+  readonly indice = signal(0);
   readonly stream = signal('');
 
   private temporizador?: ReturnType<typeof setInterval>;
@@ -333,6 +469,21 @@ export class LivePageComponent implements OnInit, OnDestroy {
     if (this.temporizador !== undefined) {
       clearInterval(this.temporizador);
     }
+  }
+
+  abrir(evento: VisionEvent): void {
+    this.detalle.set(evento);
+    // Se abre por el fotograma central, que es donde suele estar la accion.
+    this.indice.set(this.medio(evento));
+  }
+
+  cerrar(): void {
+    this.detalle.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  alPulsarEscape(): void {
+    this.cerrar();
   }
 
   /** El MJPEG se corta si el motor se reinicia; recargarlo lo reengancha. */

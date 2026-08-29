@@ -56,6 +56,7 @@ export interface VisionEvent {
   domain: string;
   created_at: number;
   gate_score: number;
+  signals: Record<string, number>;
   status: 'analyzing' | 'incident' | 'dismissed' | 'error';
   verdict: VisionVerdict | null;
   frames: string[];
