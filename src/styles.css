@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@import 'tailwindcss';
+
+/* Dark-first (default). Light: html[data-theme="light"] */
+:root,
+html[data-theme='dark'] {
+  --sentra-bg-void: #0a0e17;
+  --sentra-bg-panel: #111827;
+  --sentra-bg-panel-2: #161f33;
+  --sentra-line: #232e47;
+  --sentra-line-bright: #2f3d5e;
+  --sentra-text-hi: #e9edf6;
+  --sentra-text-mid: #a6b0c8;
+  --sentra-text-low: #5c6884;
+  --sentra-signal-cyan: #22e0ff;
+  --sentra-signal-cyan-dim: rgba(34, 224, 255, 0.14);
+  --sentra-ok: #2fe08a;
+  --sentra-ok-dim: rgba(47, 224, 138, 0.14);
+  --sentra-warn: #ffb020;
+  --sentra-warn-dim: rgba(255, 176, 32, 0.14);
+  /* OperationalSeverity — rojo solo critical (RNF-UX-2) */
+  --sentra-severity-low: #6b7a99;
+  --sentra-severity-medium: #ffb020;
+  --sentra-severity-high: #ff8c42;
+  --sentra-severity-critical: #ff4d5e;
+  --sentra-severity-critical-dim: rgba(255, 77, 94, 0.14);
+  --sentra-font-display: 'Space Grotesk', sans-serif;
+  --sentra-font-body: 'IBM Plex Sans', sans-serif;
+  --sentra-font-mono: 'JetBrains Mono', monospace;
+  --sentra-radius: 3px;
+}
+
+html[data-theme='light'] {
+  --sentra-bg-void: #f0f3f8;
+  --sentra-bg-panel: #ffffff;
+  --sentra-bg-panel-2: #e8edf5;
+  --sentra-line: #d0d7e6;
+  --sentra-line-bright: #b8c2d6;
+  --sentra-text-hi: #0f1520;
+  --sentra-text-mid: #4a5568;
+  --sentra-text-low: #7a869c;
+  --sentra-signal-cyan: #0891b2;
+  --sentra-signal-cyan-dim: rgba(8, 145, 178, 0.12);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--sentra-bg-void);
+  color: var(--sentra-text-hi);
+  font-family: var(--sentra-font-body);
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(34, 224, 255, 0.05), transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(255, 77, 94, 0.04), transparent 45%);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--sentra-signal-cyan);
+  outline-offset: 2px;
+}
+
+.font-mono {
+  font-family: var(--sentra-font-mono);
+}
+
+.font-display {
+  font-family: var(--sentra-font-display);
+}
