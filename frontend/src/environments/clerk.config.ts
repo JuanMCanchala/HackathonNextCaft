@@ -6,7 +6,7 @@ export const clerkConfig = {
   jwtApplicationId: 'convex',
   signInUrl: '/sign-in',
   signUpUrl: '/sign-up',
-  afterSignInUrl: '/',
+  afterSignInUrl: '/app',
 } as const;
 
 export type ClerkConfig = typeof clerkConfig;

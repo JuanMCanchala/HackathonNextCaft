@@ -17,7 +17,7 @@ import { HlmBadgeDirective, HlmCardComponent, HlmCardContentComponent } from './
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a [routerLink]="['/cameras', camera().id]" class="block transition hover:brightness-110">
+    <a [routerLink]="['/app/cameras', camera().id]" class="block transition hover:brightness-110">
       <hlm-card
         class="overflow-hidden p-0"
         [class.border-destructive]="highlighted()"

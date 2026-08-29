@@ -5,6 +5,12 @@ import { workspaceGuard } from './core/permissions/workspace.guard';
 
 export const routes: Routes = [
   {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/landing/landing-page.component').then((m) => m.LandingPageComponent),
+  },
+  {
     matcher: catchAllRoute('sign-in'),
     loadComponent: () =>
       import('./features/auth/sign-in-page.component').then((m) => m.SignInPageComponent),
@@ -23,7 +29,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: '',
+    path: 'app',
     canActivate: [authGuard, workspaceGuard],
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     children: [

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
 import { IncidentStore } from './incident.store';
 import { FilterBarComponent, type IncidentFilterValue } from '../../shared/ui/filter-bar.component';
 import { IncidentCardComponent } from '../../shared/ui/incident-card.component';
@@ -33,7 +33,11 @@ import type { IncidentState, OperationalSeverity } from '../../core/models/enums
         </p>
       </div>
 
-      <app-filter-bar mode="incidents" (incidentChange)="onFilters($event)" />
+      <app-filter-bar
+        mode="incidents"
+        [incidentFilters]="incidentFilters()"
+        (incidentChange)="onFilters($event)"
+      />
 
       @if (store.loading() && store.page().items.length === 0) {
         <app-loading-state />
@@ -58,6 +62,16 @@ import type { IncidentState, OperationalSeverity } from '../../core/models/enums
 })
 export class IncidentsPageComponent implements OnInit {
   readonly store = inject(IncidentStore);
+
+  readonly incidentFilters = computed((): IncidentFilterValue => {
+    const f = this.store.filters();
+    return {
+      state: f.state ? (Array.isArray(f.state) ? f.state : [f.state]) : [],
+      severity: f.severity ? (Array.isArray(f.severity) ? f.severity : [f.severity]) : [],
+      category: f.category ?? '',
+      cameraId: f.cameraId ?? '',
+    };
+  });
 
   ngOnInit(): void {
     void this.store.loadList();

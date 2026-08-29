@@ -68,9 +68,9 @@ export class SidenavComponent {
   readonly navLinkClass = cn('h-9 w-full justify-start px-3 text-muted-foreground hover:text-foreground');
 
   readonly links = [
-    { path: '/', label: 'Dashboard', glyph: '◆', exact: true },
-    { path: '/cameras', label: 'Cámaras', glyph: '▣', exact: false },
-    { path: '/incidents', label: 'Incidentes', glyph: '≡', exact: false },
-    { path: '/analytics', label: 'Analítica', glyph: '▤', exact: false },
+    { path: '/app', label: 'Dashboard', glyph: '◆', exact: true },
+    { path: '/app/cameras', label: 'Cámaras', glyph: '▣', exact: false },
+    { path: '/app/incidents', label: 'Incidentes', glyph: '≡', exact: false },
+    { path: '/app/analytics', label: 'Analítica', glyph: '▤', exact: false },
   ] as const;
 }
