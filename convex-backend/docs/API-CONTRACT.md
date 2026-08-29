@@ -644,17 +644,17 @@ type CreateWebhookRequest = {
 
 Subscribe with Clerk-authenticated `ConvexClient`. All queries are **workspace-scoped**; never pass a foreign `workspaceId` and expect data.
 
-| Convex function (target names) | Args                                         | Returns                   | Maps to                  |
-| ------------------------------ | -------------------------------------------- | ------------------------- | ------------------------ |
-| `workspaces.list`              | `{ paginationOpts }`                         | page of `WorkspaceSummary`| `GET /v1/workspaces`     |
-| `workspaces.get`               | `{ workspaceId }`                            | `WorkspaceDetail`         | `GET /v1/workspaces/{id}`|
-| `workspaces.create`            | `{ name, groupingWindowSeconds?, retentionDays?, timezone? }` | `WorkspaceDetail` | create workspace (caller becomes admin) |
-| `cameras.list`                 | `{ workspaceId, filters? }`                  | `Camera[]` or page        | `GET /v1/cameras`        |
-| `cameras.get`                  | `{ cameraId }`                               | `Camera \| null`          | `GET /v1/cameras/{id}`   |
-| `incidents.list`               | `{ workspaceId, filters?, paginationOpts? }` | page of `IncidentSummary` | `GET /v1/incidents`      |
-| `incidents.get`                | `{ incidentId }`                             | `IncidentDetail \| null`  | `GET /v1/incidents/{id}` |
-| `evidence.list`                | `{ incidentId }`                             | `EvidenceDescriptor[]`    | evidence list            |
-| `stats.get`                    | `StatsQuery & { workspaceId }`               | `StatsResponse`           | `GET /v1/stats`          |
+| Convex function (target names) | Args                                                          | Returns                    | Maps to                                 |
+| ------------------------------ | ------------------------------------------------------------- | -------------------------- | --------------------------------------- |
+| `workspaces.list`              | `{ paginationOpts }`                                          | page of `WorkspaceSummary` | `GET /v1/workspaces`                    |
+| `workspaces.get`               | `{ workspaceId }`                                             | `WorkspaceDetail`          | `GET /v1/workspaces/{id}`               |
+| `workspaces.create`            | `{ name, groupingWindowSeconds?, retentionDays?, timezone? }` | `WorkspaceDetail`          | create workspace (caller becomes admin) |
+| `cameras.list`                 | `{ workspaceId, filters? }`                                   | `Camera[]` or page         | `GET /v1/cameras`                       |
+| `cameras.get`                  | `{ cameraId }`                                                | `Camera \| null`           | `GET /v1/cameras/{id}`                  |
+| `incidents.list`               | `{ workspaceId, filters?, paginationOpts? }`                  | page of `IncidentSummary`  | `GET /v1/incidents`                     |
+| `incidents.get`                | `{ incidentId }`                                              | `IncidentDetail \| null`   | `GET /v1/incidents/{id}`                |
+| `evidence.list`                | `{ incidentId }`                                              | `EvidenceDescriptor[]`     | evidence list                           |
+| `stats.get`                    | `StatsQuery & { workspaceId }`                                | `StatsResponse`            | `GET /v1/stats`                         |
 
 **Mutations (same DTOs as HTTP):**  
 `workspaces.create`, `cameras.create`, `cameras.update`, `incidents.triage`, `incidents.acknowledge`, `incidents.resolve`, `incidents.dismiss`, `incidents.setSeverity`, …
