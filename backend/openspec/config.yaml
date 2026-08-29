@@ -1,0 +1,57 @@
+schema: spec-driven
+
+context: |
+  Project: HackathonNextCaft
+  Backend: Convex TypeScript under backend/ with @convex-dev/agent and @ai-sdk/openai
+  Package manager: pnpm 11.11.0
+  Quality: strict TypeScript, ESLint, Prettier, Jest
+  Architecture: Convex functions, Convex persistence/realtime, Agent Component
+  Documentation: backend/docs/SENTRA-PRD.md, backend/docs/DOMAIN-DESIGN.md, backend/docs/USE-CASES.md, backend/docs/API-SITEMAP.md, backend/docs/BACKEND-TEST-CASES.md
+  Artifact store: hybrid (OpenSpec files plus Engram observations)
+  Execution: automatic; delivery strategy: ask-on-risk
+
+strict_tdd: true
+
+testing:
+  runner: "pnpm test"
+  framework: "Jest 30 with ts-jest"
+  unit: true
+  integration: false
+  e2e: false
+  coverage: false
+  lint: "pnpm run lint:check"
+  typecheck: "pnpm run typecheck"
+  format: "pnpm run format:check"
+  build: "pnpm run build"
+  convex_validation: "pnpm exec convex dev --once"
+
+rules:
+  proposal:
+    - Define explicit in-scope and out-of-scope behavior.
+    - Include rollback plans for risky changes.
+  specs:
+    - Use RFC 2119 keywords and Given/When/Then scenarios.
+    - Treat Convex public function validators and auth/ownership checks as API contracts.
+  design:
+    - Read backend/convex/_generated/ai/guidelines.md before Convex changes.
+    - Document persistence, component, and authorization decisions with rationale.
+  tasks:
+    - Use vertical slices with isolated write surfaces and verifiable acceptance criteria.
+    - Keep each task independently testable.
+  apply:
+    tdd: true
+    test_command: "pnpm test"
+    guidelines:
+      - Do not commit generated Convex output or secrets.
+      - Keep Convex functions small and feature-oriented.
+  verify:
+    test_command: "pnpm test"
+    build_command: "pnpm run build"
+    typecheck_command: "pnpm run typecheck"
+    lint_command: "pnpm run lint:check"
+    format_command: "pnpm run format:check"
+    convex_command: "pnpm exec convex dev --once"
+    coverage_threshold: 0
+  archive:
+    - Reconcile OpenSpec artifacts, Engram observations, and repository state before closure.
+    - Ask before risky delivery actions under the ask-on-risk strategy.

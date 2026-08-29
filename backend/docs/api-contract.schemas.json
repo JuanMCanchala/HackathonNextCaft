@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentra.local/contracts/api-contract.schemas.json",
+  "title": "Sentra API Contract Schemas",
+  "description": "Machine-readable MVP schemas for frontend validation. Aligns with docs/API-CONTRACT.md.",
+  "$defs": {
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 UTC timestamp"
+    },
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "errorCode": {
+      "type": "string",
+      "enum": [
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "VALIDATION_ERROR",
+        "CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "RATE_LIMITED",
+        "EVIDENCE_UNAVAILABLE",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "apiError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "requestId"],
+      "properties": {
+        "code": { "$ref": "#/$defs/errorCode" },
+        "message": { "type": "string" },
+        "requestId": { "type": "string", "minLength": 1 },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "message"],
+            "properties": {
+              "path": { "type": "string" },
+              "message": { "type": "string" },
+              "code": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "workspaceRole": {
+      "type": "string",
+      "enum": ["workspace_admin", "operator", "viewer"]
+    },
+    "cameraAdminStatus": {
+      "type": "string",
+      "enum": ["active", "paused", "disabled"]
+    },
+    "cameraConnectivity": {
+      "type": "string",
+      "enum": ["online", "offline", "degraded", "unknown"]
+    },
+    "incidentState": {
+      "type": "string",
+      "enum": ["detected", "triaged", "acknowledged", "resolved", "dismissed"]
+    },
+    "operationalSeverity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "evidenceKind": {
+      "type": "string",
+      "enum": ["snapshot", "external_reference"]
+    },
+    "evidenceStatus": {
+      "type": "string",
+      "enum": ["available", "expired", "unavailable", "failed"]
+    },
+    "apiKeyStatus": {
+      "type": "string",
+      "enum": ["active", "revoked", "expired"]
+    },
+    "webhookDeliveryState": {
+      "type": "string",
+      "enum": ["pending", "delivered", "retrying", "failed", "disabled"]
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "workspace:read",
+        "cameras:read",
+        "cameras:write",
+        "cameras:heartbeat",
+        "incidents:read",
+        "incidents:write",
+        "detections:read",
+        "evidence:read",
+        "stats:read",
+        "webhooks:read",
+        "webhooks:write"
+      ]
+    },
+    "pageMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor", "hasMore"],
+      "properties": {
+        "items": { "type": "array" },
+        "nextCursor": { "type": ["string", "null"] },
+        "hasMore": { "type": "boolean" }
+      }
+    },
+    "workspaceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "status", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "$ref": "#/$defs/rfc3339" },
+        "updatedAt": { "$ref": "#/$defs/rfc3339" }
+      }
+    },
+    "workspaceDetail": {
+      "allOf": [
+        { "$ref": "#/$defs/workspaceSummary" },
+        {
+          "type": "object",
+          "required": ["settings"],
+          "properties": {
+            "settings": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["groupingWindowSeconds", "retentionDays", "timezone"],
+              "properties": {
+                "groupingWindowSeconds": {
+                  "type": "integer",
+                  "minimum": 30,
+                  "maximum": 60
+                },
+                "retentionDays": { "type": "integer", "minimum": 1 },
+                "timezone": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "subjectId",
+        "role",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "subjectId": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/workspaceRole" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "$ref": "#/$defs/rfc3339" },
+        "updatedAt": { "$ref": "#/$defs/rfc3339" }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "externalId",
+        "label",
+        "location",
+        "adminStatus",
+        "connectivity",
+        "lastHeartbeatAt",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "externalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "location": { "type": ["string", "null"], "maxLength": 256 },
+        "adminStatus": { "$ref": "#/$defs/cameraAdminStatus" },
+        "connectivity": { "$ref": "#/$defs/cameraConnectivity" },
+        "lastHeartbeatAt": { "oneOf": [{ "$ref": "#/$defs/rfc3339" }, { "type": "null" }] },
+        "version": { "type": "integer", "minimum": 0 },
+        "createdAt": { "$ref": "#/$defs/rfc3339" },
+        "updatedAt": { "$ref": "#/$defs/rfc3339" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "incidentSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "cameraId",
+        "category",
+        "state",
+        "severity",
+        "openedAt",
+        "lastObservedAt",
+        "assignedToSubjectId",
+        "version"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "cameraId": { "$ref": "#/$defs/opaqueId" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "state": { "$ref": "#/$defs/incidentState" },
+        "severity": { "$ref": "#/$defs/operationalSeverity" },
+        "openedAt": { "$ref": "#/$defs/rfc3339" },
+        "lastObservedAt": { "$ref": "#/$defs/rfc3339" },
+        "assignedToSubjectId": { "type": ["string", "null"] },
+        "version": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "incidentTimelineEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "at", "type", "actorKind", "actorId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "at": { "$ref": "#/$defs/rfc3339" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "state_changed",
+            "severity_changed",
+            "detection_linked",
+            "assignment_changed",
+            "note"
+          ]
+        },
+        "actorKind": {
+          "type": "string",
+          "enum": ["user", "system", "key", "ingestion"]
+        },
+        "actorId": { "type": ["string", "null"] },
+        "from": { "type": ["string", "null"] },
+        "to": { "type": ["string", "null"] },
+        "message": { "type": ["string", "null"] }
+      }
+    },
+    "incidentDetail": {
+      "allOf": [
+        { "$ref": "#/$defs/incidentSummary" },
+        {
+          "type": "object",
+          "required": [
+            "initialSeverity",
+            "severityOverride",
+            "detectionIds",
+            "evidenceIds",
+            "timeline"
+          ],
+          "properties": {
+            "initialSeverity": { "$ref": "#/$defs/operationalSeverity" },
+            "severityOverride": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["from", "to", "reason", "actorSubjectId", "at"],
+                  "properties": {
+                    "from": { "$ref": "#/$defs/operationalSeverity" },
+                    "to": { "$ref": "#/$defs/operationalSeverity" },
+                    "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+                    "actorSubjectId": { "type": "string" },
+                    "at": { "$ref": "#/$defs/rfc3339" }
+                  }
+                }
+              ]
+            },
+            "detectionIds": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/opaqueId" }
+            },
+            "evidenceIds": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/opaqueId" }
+            },
+            "timeline": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/incidentTimelineEntry" }
+            }
+          }
+        }
+      ]
+    },
+    "detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "cameraId",
+        "incidentId",
+        "occurredAt",
+        "receivedAt",
+        "category",
+        "suggestedCategory",
+        "confidence",
+        "modelVersion",
+        "detectorVersion",
+        "evidenceIds"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "cameraId": { "$ref": "#/$defs/opaqueId" },
+        "incidentId": { "type": ["string", "null"] },
+        "occurredAt": { "$ref": "#/$defs/rfc3339" },
+        "receivedAt": { "$ref": "#/$defs/rfc3339" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "suggestedCategory": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "modelVersion": { "type": "string", "minLength": 1 },
+        "detectorVersion": { "type": "string", "minLength": 1 },
+        "evidenceIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/opaqueId" }
+        }
+      }
+    },
+    "evidenceDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "incidentId",
+        "detectionId",
+        "kind",
+        "contentType",
+        "capturedAt",
+        "retentionExpiresAt",
+        "status"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "incidentId": { "type": ["string", "null"] },
+        "detectionId": { "type": ["string", "null"] },
+        "kind": { "$ref": "#/$defs/evidenceKind" },
+        "contentType": { "type": "string", "minLength": 1 },
+        "capturedAt": { "$ref": "#/$defs/rfc3339" },
+        "retentionExpiresAt": {
+          "oneOf": [{ "$ref": "#/$defs/rfc3339" }, { "type": "null" }]
+        },
+        "status": { "$ref": "#/$defs/evidenceStatus" }
+      }
+    },
+    "evidenceAccessGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "url", "expiresAt", "purpose"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/opaqueId" },
+        "url": { "type": "string", "format": "uri" },
+        "expiresAt": { "$ref": "#/$defs/rfc3339" },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "statsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspaceId", "from", "to", "timezone", "counts"],
+      "properties": {
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "from": { "$ref": "#/$defs/rfc3339" },
+        "to": { "$ref": "#/$defs/rfc3339" },
+        "timezone": { "type": "string" },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "incidentsByState",
+            "incidentsBySeverity",
+            "detectionsTotal",
+            "camerasOnline",
+            "camerasTotal"
+          ],
+          "properties": {
+            "incidentsByState": { "type": "object" },
+            "incidentsBySeverity": { "type": "object" },
+            "detectionsTotal": { "type": "integer", "minimum": 0 },
+            "camerasOnline": { "type": "integer", "minimum": 0 },
+            "camerasTotal": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "createCameraRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspaceId", "externalId", "label"],
+      "properties": {
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "externalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "location": { "type": ["string", "null"], "maxLength": 256 },
+        "adminStatus": { "$ref": "#/$defs/cameraAdminStatus" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "patchCameraRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "location": { "type": ["string", "null"], "maxLength": 256 },
+        "adminStatus": { "$ref": "#/$defs/cameraAdminStatus" },
+        "metadata": { "type": "object" },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "heartbeatRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceEventId", "timestamp"],
+      "properties": {
+        "sourceEventId": { "type": "string", "minLength": 1 },
+        "timestamp": { "$ref": "#/$defs/rfc3339" },
+        "signal": { "type": "string", "enum": ["ok", "degraded", "error"] }
+      }
+    },
+    "triageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "properties": {
+        "category": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "assignedToSubjectId": { "type": ["string", "null"] },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "transitionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "dismissRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "expectedVersion"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "patchIncidentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "properties": {
+        "severity": { "$ref": "#/$defs/operationalSeverity" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "expectedVersion": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "evidenceAccessRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose"],
+      "properties": {
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "ttlSeconds": { "type": "integer", "minimum": 60, "maximum": 300 }
+      }
+    },
+    "createApiKeyRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "scopes"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scope" },
+          "uniqueItems": true
+        },
+        "expiresAt": {
+          "oneOf": [{ "$ref": "#/$defs/rfc3339" }, { "type": "null" }]
+        }
+      }
+    },
+    "createWebhookRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspaceId", "endpointUrl", "eventTypes"],
+      "properties": {
+        "workspaceId": { "$ref": "#/$defs/opaqueId" },
+        "endpointUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "eventTypes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "incidentTransitions": {
+      "description": "Allowed state machine for UI command enablement",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "detected": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["triage", "dismiss"] }
+        },
+        "triaged": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["acknowledge", "dismiss"] }
+        },
+        "acknowledged": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["resolve", "dismiss"] }
+        },
+        "resolved": { "type": "array", "maxItems": 0 },
+        "dismissed": { "type": "array", "maxItems": 0 }
+      }
+    }
+  }
+}
