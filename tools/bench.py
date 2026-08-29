@@ -113,8 +113,13 @@ def _bbox_at(samples: list, ts: float, ratio: float):
 
 
 def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
-             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int]:
-    """Devuelve (disparo el gate, lo confirmo el VLM, numero de disparos)."""
+             use_vlm: bool, totals: Totals) -> tuple[bool, bool, int, dict, int]:
+    """Devuelve (disparo, confirmado, n disparos, pico de senales, max personas).
+
+    El pico por senal es lo que permite diagnosticar un recall bajo sin
+    adivinar: si `proximity` sale 0.00 de media en los clips positivos, el
+    problema es que el detector no ve a la segunda persona, no el umbral.
+    """
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
         raise RuntimeError("no se pudo abrir")
@@ -124,6 +129,8 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     buffer = RingBuffer(config.BUFFER_SECONDS, fps=src_fps / step)
     histories: dict[int, TrackHistory] = {}
     pending: list[tuple] = []
+    peaks: dict[str, float] = {}
+    max_people = 0
     index = 0
 
     while True:
@@ -139,7 +146,9 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
         buffer.push(t, frame)
         ratio = min(1.0, config.VLM_MAX_WIDTH / frame.shape[1])
 
-        for track in tracker(frame):
+        detected = tracker(frame)
+        max_people = max(max_people, len(detected))
+        for track in detected:
             hist = histories.setdefault(track["id"], TrackHistory(track["id"]))
             hist.push(t, track["bbox"], track["kp"])
 
@@ -150,6 +159,8 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
             if abs(hist.last_seen - t) > 1e-9:
                 continue
             values, _score, fire = gate.evaluate(hist, ctx)
+            for name, val in values.items():
+                peaks[name] = max(peaks.get(name, 0.0), val)
             if fire and len(pending) < MAX_VLM_PER_CLIP:
                 pending.append((dict(values), t, ratio,
                                 [(s.t, np.array(s.bbox, copy=True),
@@ -164,7 +175,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
     totals.triggers += len(pending)
 
     if not use_vlm or not pending:
-        return bool(pending), False, len(pending)
+        return bool(pending), False, len(pending), peaks, max_people
 
     confirmed = False
     for values, t, ratio, samples in pending:
@@ -181,7 +192,7 @@ def run_clip(path: Path, tracker: PoseTracker, gate: Gate, judge: VLMJudge,
             totals.vlm_errors += 1
             print(f"      aviso: fallo el VLM ({exc})", file=sys.stderr)
 
-    return True, confirmed, len(pending)
+    return True, confirmed, len(pending), peaks, max_people
 
 
 def collect(folder: Path, limit: int) -> list[tuple[Path, bool]]:
@@ -201,6 +212,39 @@ def _block(c: Counts) -> None:
     print(f"  falsos positivos (FPR)    {_pct(c.fpr)}   de los clips sin incidente")
     print(f"  falsos negativos (FNR)    {_pct(c.fnr)}   de los clips con incidente")
     print(f"  F1                        {_pct(c.f1)}")
+
+
+def diagnose(peaks_pos: list[dict], peaks_neg: list[dict],
+             people_pos: list[int], people_neg: list[int]) -> None:
+    """Por que dispara o no dispara, en numeros.
+
+    Un recall bajo puede venir de un umbral mal puesto o de que el detector no
+    ve lo que hace falta. Comparar el pico medio de cada senal entre clips con
+    y sin incidente distingue las dos cosas de un vistazo.
+    """
+    names = sorted({k for d in peaks_pos + peaks_neg for k in d})
+    if not names:
+        return
+    print()
+    print("=" * 66)
+    print("  DIAGNOSTICO  ·  pico medio de cada senal")
+    print("=" * 66)
+    print(f"  {'senal':<14}{'con incidente':>15}{'sin incidente':>15}{'separacion':>13}")
+    for name in names:
+        a = [d.get(name, 0.0) for d in peaks_pos]
+        b = [d.get(name, 0.0) for d in peaks_neg]
+        ma = sum(a) / len(a) if a else 0.0
+        mb = sum(b) / len(b) if b else 0.0
+        print(f"  {name:<14}{ma:>15.2f}{mb:>15.2f}{ma - mb:>+13.2f}")
+    print()
+    print(f"  personas detectadas   con incidente {_avg(people_pos):.1f}"
+          f"   sin incidente {_avg(people_neg):.1f}")
+    print("  Si una senal separa poco, el umbral no es el problema: o la senal")
+    print("  no mide lo que creemos, o el detector no ve lo que necesita.")
+
+
+def _avg(xs: list[int]) -> float:
+    return sum(xs) / len(xs) if xs else 0.0
 
 
 def report(stage1: Counts, stage2: Counts, totals: Totals,
@@ -259,6 +303,10 @@ def main() -> int:
                     help="mide solo la Etapa 1, sin gastar cuota de API")
     ap.add_argument("--out", type=Path, default=None,
                     help="guarda el resultado en JSON")
+    ap.add_argument("--imgsz", type=int, default=config.POSE_IMGSZ,
+                    help="resolucion de inferencia. Subirla ayuda con CCTV lejano")
+    ap.add_argument("--conf", type=float, default=0.4,
+                    help="confianza minima para dar por detectada a una persona")
     args = ap.parse_args()
 
     domains = load_domains(config.DOMAINS_DIR)
@@ -278,9 +326,13 @@ def main() -> int:
     judge = VLMJudge()
     use_vlm = not args.no_vlm and not judge.offline
     tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
-                          imgsz=config.POSE_IMGSZ)
+                          conf=args.conf, imgsz=args.imgsz)
 
     stage1, stage2, totals = Counts(), Counts(), Totals()
+    peaks_pos: list[dict] = []
+    peaks_neg: list[dict] = []
+    people_pos: list[int] = []
+    people_neg: list[int] = []
     wall = time.time()
     n_pos = sum(1 for _p, e in clips if e)
 
@@ -291,10 +343,14 @@ def main() -> int:
     for i, (path, expected) in enumerate(clips, start=1):
         gate = Gate(domains[args.domain])
         try:
-            fired, confirmed, n = run_clip(path, tracker, gate, judge, use_vlm, totals)
+            fired, confirmed, n, peaks, people = run_clip(
+                path, tracker, gate, judge, use_vlm, totals)
         except Exception as exc:                          # noqa: BLE001
             print(f"  [{i}/{len(clips)}] {path.name}: ERROR {exc}", file=sys.stderr)
             continue
+
+        (peaks_pos if expected else peaks_neg).append(peaks)
+        (people_pos if expected else people_neg).append(people)
 
         stage1.add(expected, fired)
         if use_vlm:
@@ -306,6 +362,7 @@ def main() -> int:
               f"gate={n} vlm={'si' if confirmed else 'no'}")
 
     report(stage1, stage2, totals, use_vlm, len(clips), time.time() - wall)
+    diagnose(peaks_pos, peaks_neg, people_pos, people_neg)
 
     if args.out:
         args.out.write_text(json.dumps({
