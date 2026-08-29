@@ -36,7 +36,7 @@ const FEED = [
   styles: `
     :host {
       display: block;
-      --landing-grid: rgba(35, 46, 71, 0.45);
+      --landing-grid: var(--sentra-landing-grid);
     }
 
     .landing-grid-bg {
@@ -63,7 +63,7 @@ const FEED = [
         rgba(0, 0, 0, 0.12) 2px,
         rgba(0, 0, 0, 0.12) 4px
       );
-      opacity: 0.35;
+      opacity: var(--sentra-scanline-opacity);
     }
 
     @keyframes feed-scroll {
