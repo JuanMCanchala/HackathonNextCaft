@@ -10,6 +10,11 @@ load_dotenv(ROOT / ".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 
+# Avisos externos. Los tres son opcionales; sin ellos no se notifica nada.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "").strip()
+
 SOURCE = os.getenv("SENTINEL_SOURCE", "0").strip()
 DOMAIN = os.getenv("SENTINEL_DOMAIN", "retail_theft").strip()
 DEVICE = os.getenv("SENTINEL_DEVICE", "cuda").strip()
@@ -23,6 +28,7 @@ POSE_IMGSZ = int(os.getenv("SENTINEL_POSE_IMGSZ", "480"))
 DOMAINS_DIR = ROOT / "backend" / "domains"
 DATA_DIR = ROOT / "data"
 CLIPS_DIR = DATA_DIR / "clips"
+UPLOADS_DIR = DATA_DIR / "uploads"
 EVENTS_LOG = DATA_DIR / "events.jsonl"
 
 # Ventana de video que se le manda al VLM alrededor del disparo.

@@ -40,5 +40,7 @@ class Event(BaseModel):
     status: Literal["analyzing", "incident", "dismissed", "error"] = "analyzing"
     verdict: Verdict | None = None
     frames: list[str] = []
+    source: str = "live"      # 'live' o el nombre del archivo subido
+    offset: float | None = None  # segundos dentro del video subido
     feedback: Literal["confirmed", "false_positive"] | None = None
     latency_ms: int | None = None

@@ -79,7 +79,12 @@ def simulate(domain: Domain, primary: list, secondary: list | None = None):
         ctx = {"now": t, "tracks": tracks,
                "frame_shape": (720, 1280, 3), "zones": domain.zones}
         values, score, trigger = gate.evaluate(hist, ctx)
-        if score > best_score:
+        # Solo cuenta lo que el gate mira de verdad: durante los primeros
+        # min_track_seconds la historia es demasiado corta y las senales aun no
+        # significan nada. Incluirlas inflaba el pico y ocultaba el motivo real
+        # de que un escenario no disparase.
+        mature = (hist.last_seen - hist.first_seen) >= domain.min_track_seconds
+        if mature and score > best_score:
             best_score, best_values = score, values
         fired = fired or trigger
 
@@ -149,14 +154,32 @@ def scene_sitting_down():
 
 
 def scene_fight():
-    """Dos personas juntas con movimiento brusco."""
+    """Forcejeo: se mueven los cuerpos enteros, no solo los brazos."""
     a, b = [], []
     for i in range(int(4 * FPS)):
-        j = np.sin(i * 1.9) * 0.35 * S
+        j = np.sin(i * 0.45) * 0.42 * S
         wr_a = ((-0.62 + j / S, 0.10), (0.9 + j / S, -0.8))
         wr_b = ((-0.9 - j / S, -0.8), (0.62 - j / S, 0.10))
-        a.append(pose(610 + j, 400, wrists=wr_a))
-        b.append(pose(670 - j, 400, wrists=wr_b))
+        a.append(pose(610 + j, 400 + j * 0.25, wrists=wr_a))
+        b.append(pose(670 - j, 400 - j * 0.25, wrists=wr_b))
+    return build(a, track_id=1), build(b, track_id=2)
+
+
+def scene_talking():
+    """Dos personas conversando y gesticulando mucho con las manos.
+
+    Este es el falso positivo que aparecio con camara real: las manos van rapido
+    pero el tronco no se mueve. No debe disparar.
+    """
+    a, b = [], []
+    for i in range(int(4 * FPS)):
+        g = np.sin(i * 0.9) * 0.7          # gesticulacion amplia y rapida
+        h = np.cos(i * 1.1) * 0.6
+        wr_a = ((-0.62, 0.10 - g * 0.9), (0.62 + g * 0.5, 0.10 - g))
+        drift = np.sin(i * 0.05) * 0.04 * S   # el cuerpo apenas se mueve
+        a.append(pose(612 + drift, 400, wrists=wr_a))
+        b.append(pose(668 - drift, 400,
+                      wrists=((-0.62 - h * 0.5, 0.10 - h), (0.62, 0.10 - h * 0.9))))
     return build(a, track_id=1), build(b, track_id=2)
 
 
@@ -179,6 +202,7 @@ def main() -> int:
 
     fight_a, fight_b = scene_fight()
     greet_a, greet_b = scene_greeting()
+    talk_a, talk_b = scene_talking()
 
     cases = [
         # (nombre, track principal, track secundaria, dominio, se espera disparo)
@@ -189,6 +213,7 @@ def main() -> int:
         ("se agacha despacio",  scene_sitting_down(), None,     "fall_detection",    False),
         ("pelea",               fight_a,              fight_b,  "violence",          True),
         ("saludo tranquilo",    greet_a,              greet_b,  "violence",          False),
+        ("conversando/gestos",  talk_a,               talk_b,   "violence",          False),
     ]
 
     print(f"\n{'escenario':<22}{'dominio':<20}{'pico':>6}{'umbral':>8}  "

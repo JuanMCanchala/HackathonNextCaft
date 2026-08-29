@@ -439,3 +439,99 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: rgba(255, 255, 255, 0.72);
   flex-shrink: 0;
 }
+
+/* ------------------------------------------------------------- boton de pausa */
+.power {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+
+.power:hover:not(:disabled) { border-color: #3b4551; color: var(--text); }
+
+.power.off {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(77, 212, 172, 0.1);
+}
+
+.power:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ------------------------------------------------------------ subida de video */
+.uploader { display: flex; flex-direction: column; gap: 8px; }
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  font-weight: 550;
+  border: 1px dashed #333c47;
+  background: var(--panel);
+  color: var(--muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.upload-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(77, 212, 172, 0.06);
+}
+
+.upload-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.upload-error {
+  font-size: 11px;
+  color: var(--alert);
+  padding: 2px 4px;
+}
+
+.job {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.job.done { border-color: rgba(77, 212, 172, 0.35); }
+.job.error { border-color: rgba(255, 90, 74, 0.4); }
+
+.job-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.job-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-meta { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--dim); flex-shrink: 0; }
+
+.job-bar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 2px;
+  background: #232830;
+  overflow: hidden;
+}
+
+.job-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.card-origin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--blue);
+  font-size: 10px;
+}

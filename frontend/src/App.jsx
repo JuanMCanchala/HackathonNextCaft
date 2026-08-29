@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, Eye, HardHat, Layers,
-  Pause, PersonStanding, Play, Radio, ShieldCheck, ShoppingBag, Swords, ThumbsDown,
+  FileVideo, Pause, PersonStanding, Play, Power, Radio, ShieldCheck, ShoppingBag,
+  Swords, ThumbsDown, Upload,
   ThumbsUp, Users, VideoOff, Zap,
 } from 'lucide-react'
 
@@ -22,6 +23,7 @@ const STATUS_LABEL = {
 function useLiveFeed() {
   const [snapshot, setSnapshot] = useState(null)
   const [events, setEvents] = useState([])
+  const [jobs, setJobs] = useState([])
   const [connected, setConnected] = useState(false)
   const retry = useRef(null)
 
@@ -41,7 +43,16 @@ function useLiveFeed() {
       ws.onmessage = (raw) => {
         const msg = JSON.parse(raw.data)
         if (msg.type === 'state') setSnapshot(msg.state)
-        if (msg.type === 'bootstrap') setEvents(msg.events)
+        if (msg.type === 'bootstrap') {
+          setEvents(msg.events)
+          setJobs(msg.jobs || [])
+        }
+        if (msg.type === 'job') {
+          setJobs((prev) => {
+            const rest = prev.filter((j) => j.id !== msg.job.id)
+            return [msg.job, ...rest].slice(0, 12)
+          })
+        }
         if (msg.type === 'event') {
           setEvents((prev) => {
             const rest = prev.filter((e) => e.id !== msg.event.id)
@@ -59,7 +70,7 @@ function useLiveFeed() {
     }
   }, [])
 
-  return { snapshot, events, connected, setEvents }
+  return { snapshot, events, jobs, connected, setEvents }
 }
 
 function Metric({ label, value, tone }) {
@@ -126,6 +137,70 @@ function EvidencePlayer({ frames }) {
   )
 }
 
+function Uploader({ jobs }) {
+  const input = useRef(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const active = jobs.find((j) => j.status === 'running' || j.status === 'queued')
+
+  const send = async (file) => {
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    const body = new FormData()
+    body.append('file', file)
+    try {
+      const res = await fetch('/api/analyze', { method: 'POST', body })
+      if (!res.ok) setError((await res.json().catch(() => ({}))).detail || 'Fallo la subida')
+    } catch {
+      setError('No se pudo contactar con el backend')
+    } finally {
+      setBusy(false)
+      if (input.current) input.current.value = ''
+    }
+  }
+
+  return (
+    <div className="uploader">
+      <input
+        ref={input}
+        type="file"
+        accept="video/mp4,video/x-msvideo,video/quicktime,video/x-matroska,video/webm"
+        hidden
+        onChange={(e) => send(e.target.files?.[0])}
+      />
+      <button
+        className="upload-btn"
+        onClick={() => input.current?.click()}
+        disabled={busy || !!active}
+      >
+        <Upload size={14} />
+        {busy ? 'Subiendo…' : active ? 'Analizando…' : 'Analizar un video'}
+      </button>
+
+      {error && <div className="upload-error">{error}</div>}
+
+      {jobs.slice(0, 3).map((job) => (
+        <div key={job.id} className={`job ${job.status}`}>
+          <div className="job-head">
+            <FileVideo size={12} />
+            <span className="job-name">{job.name}</span>
+            <span className="job-meta">
+              {job.status === 'done'
+                ? `${job.incidents} incid. / ${job.triggers} disparos`
+                : job.status === 'error' ? 'error' : `${Math.round(job.progress * 100)}%`}
+            </span>
+          </div>
+          {job.status !== 'done' && job.status !== 'error' && (
+            <div className="job-bar"><span style={{ width: `${job.progress * 100}%` }} /></div>
+          )}
+          {job.error && <div className="upload-error">{job.error}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function IncidentCard({ event, onFeedback }) {
   const verdict = event.verdict
   const when = new Date(event.created_at * 1000).toLocaleTimeString('es-ES')
@@ -142,6 +217,12 @@ function IncidentCard({ event, onFeedback }) {
           <div className="card-sub">
             {when} · persona #{event.track_id} · gate {event.gate_score.toFixed(2)}
             {event.latency_ms ? ` · ${(event.latency_ms / 1000).toFixed(1)}s` : ''}
+            {event.source && event.source !== 'live' && (
+              <div className="card-origin">
+                <FileVideo size={10} /> {event.source}
+                {event.offset != null && ` · min ${Math.floor(event.offset / 60)}:${String(Math.floor(event.offset % 60)).padStart(2, '0')}`}
+              </div>
+            )}
           </div>
         </div>
         <span className="card-status">{STATUS_LABEL[event.status]}</span>
@@ -213,7 +294,7 @@ function IncidentCard({ event, onFeedback }) {
 }
 
 export default function App() {
-  const { snapshot, events, connected, setEvents } = useLiveFeed()
+  const { snapshot, events, jobs, connected, setEvents } = useLiveFeed()
   const [domains, setDomains] = useState([])
 
   useEffect(() => {
@@ -227,6 +308,11 @@ export default function App() {
     fetch(`/api/domain/${id}`, { method: 'POST' }).catch(() => {})
   }, [])
 
+  const togglePower = useCallback(() => {
+    const next = snapshot?.status === 'paused' ? 'resume' : 'pause'
+    fetch(`/api/${next}`, { method: 'POST' }).catch(() => {})
+  }, [snapshot?.status])
+
   const sendFeedback = useCallback((id, feedback) => {
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, feedback } : e)))
     fetch(`/api/events/${id}/feedback`, {
@@ -238,6 +324,7 @@ export default function App() {
 
   const stats = snapshot?.stats || {}
   const running = snapshot?.status === 'running'
+  const paused = snapshot?.status === 'paused'
   const incidents = useMemo(
     () => events.filter((e) => e.status === 'incident').length,
     [events],
@@ -253,12 +340,14 @@ export default function App() {
         </div>
 
         <span className="pill">
-          <span className={`dot ${!connected ? 'down' : snapshot?.analyzing ? 'busy' : running ? 'live' : ''}`} />
+          <span className={`dot ${!connected || paused ? 'down' : snapshot?.analyzing ? 'busy' : running ? 'live' : ''}`} />
           {!connected
             ? 'sin conexion'
-            : snapshot?.analyzing
-              ? `${snapshot.analyzing} en analisis`
-              : running ? 'operando' : (snapshot?.status || 'iniciando')}
+            : paused
+              ? 'en pausa'
+              : snapshot?.analyzing
+                ? `${snapshot.analyzing} en analisis`
+                : running ? 'operando' : (snapshot?.status || 'iniciando')}
         </span>
 
         {snapshot?.offline && (
@@ -266,6 +355,16 @@ export default function App() {
             <Zap size={11} /> modo offline
           </span>
         )}
+
+        <button
+          className={`power ${paused ? 'off' : ''}`}
+          onClick={togglePower}
+          disabled={!connected}
+          title={paused ? 'Reanudar: vuelve a abrir la camara' : 'Pausar: suelta la camara y detiene la inferencia'}
+        >
+          <Power size={13} />
+          {paused ? 'Reanudar' : 'Pausar'}
+        </button>
 
         <div className="metrics">
           <Metric label="fps" value={snapshot?.fps ?? '—'} />
@@ -300,7 +399,11 @@ export default function App() {
             ) : (
               <div className="placeholder">
                 <VideoOff size={26} />
-                {connected ? 'Iniciando camara y cargando el modelo de pose…' : 'Backend no disponible'}
+                {!connected
+                  ? 'Backend no disponible'
+                  : paused
+                    ? 'En pausa. La camara esta liberada y no se procesa nada.'
+                    : 'Iniciando camara y cargando el modelo de pose…'}
               </div>
             )}
           </div>
@@ -324,6 +427,8 @@ export default function App() {
               )
             })}
           </div>
+
+          <Uploader jobs={jobs} />
         </section>
 
         <aside className="feed">

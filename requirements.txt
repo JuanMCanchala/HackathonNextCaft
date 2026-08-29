@@ -10,3 +10,4 @@ torchvision
 ultralytics==8.3.55
 google-genai
 lapx>=0.5.11
+python-multipart>=0.0.20

@@ -10,12 +10,20 @@ from collections import deque
 import numpy as np
 
 from .schemas import (
-    L_ANKLE, L_HIP, L_SHOULDER, L_WRIST,
-    R_ANKLE, R_HIP, R_SHOULDER, R_WRIST,
+    L_ANKLE, L_ELBOW, L_HIP, L_KNEE, L_SHOULDER, L_WRIST,
+    R_ANKLE, R_ELBOW, R_HIP, R_KNEE, R_SHOULDER, R_WRIST,
 )
 
 KP_CONF = 0.3
 HISTORY_SECONDS = 6.0
+
+# Salto temporal para medir velocidad. Por debajo de ~0.2 s domina el jitter de
+# la deteccion de pose; por encima de ~0.4 s se pierde un golpe rapido.
+STRIDE_SECONDS = 0.25
+
+# Tronco frente a extremidades: gesticular mueve las manos, pelear mueve todo.
+CORE_KP = (L_SHOULDER, R_SHOULDER, L_HIP, R_HIP)
+LIMB_KP = (L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE)
 
 
 def _pt(kp: np.ndarray, idx: int):
@@ -145,29 +153,56 @@ class TrackHistory:
         lo = self.last_seen - older
         return [s for s in self.samples if lo <= s.t <= hi]
 
-    def speed(self, window: list[Sample]) -> float:
-        """Velocidad de keypoints en largos-de-torso por segundo.
+    def speed(self, window: list[Sample], indices=None,
+              stride: float = STRIDE_SECONDS) -> float:
+        """Velocidad en largos-de-torso por segundo, sobre un salto temporal fijo.
 
-        Percentil 75, no el maximo. Con el maximo bastaba un solo frame con un
-        keypoint mal estimado para saturar la senal, y a FPS bajos eso pasa
-        constantemente: una persona parada marcaba movimiento 1.0. El p75 sigue
-        capturando un golpe (que dura varios frames) y descarta el pico aislado.
+        Comparar frames consecutivos es una trampa a FPS altos: con dt = 0.036 s,
+        3 px de jitter en un keypoint se leen como 1.4 torsos/segundo. Medido con
+        camara real, dos personas quietas conversando daban movimiento 1.0.
+        Comparar contra el frame de hace `stride` segundos promedia ese ruido y
+        deja pasar solo el desplazamiento que de verdad ocurrio.
+
+        `indices` restringe el calculo a un subconjunto de keypoints, que es lo
+        que permite separar "mueve el tronco" de "mueve las manos".
         """
         if len(window) < 2:
             return 0.0
-        speeds = []
-        for a, b in zip(window, window[1:]):
+
+        sel = None
+        if indices is not None:
+            sel = np.zeros(window[0].kp.shape[0], dtype=bool)
+            sel[list(indices)] = True
+
+        speeds: list[float] = []
+        j = 0
+        for i, a in enumerate(window):
+            j = max(j, i + 1)
+            while j < len(window) and window[j].t - a.t < stride:
+                j += 1
+            if j >= len(window):
+                break
+            b = window[j]
             dt = b.t - a.t
             if dt <= 1e-3:
                 continue
             mask = (a.kp[:, 2] > KP_CONF) & (b.kp[:, 2] > KP_CONF)
-            if mask.sum() >= 4:
+            if sel is not None:
+                mask = mask & sel
+            if mask.sum() >= 2:
                 d = float(np.linalg.norm(b.kp[mask, :2] - a.kp[mask, :2], axis=1).mean())
             else:
                 d = float(np.linalg.norm(b.center - a.center))
             speeds.append(d / dt / max(b.scale, 1.0))
+
         if not speeds:
-            return 0.0
+            # Ventana mas corta que el salto: medir de extremo a extremo.
+            a, b = window[0], window[-1]
+            dt = b.t - a.t
+            if dt <= 1e-3:
+                return 0.0
+            return float(np.linalg.norm(b.center - a.center)) / dt / max(b.scale, 1.0)
+
         return float(np.percentile(speeds, 75))
 
 
@@ -188,8 +223,17 @@ def sig_concealment(hist: TrackHistory, ctx: dict) -> float:
 
 
 def sig_motion(hist: TrackHistory, ctx: dict) -> float:
-    """Energia de movimiento pico: forcejeos, golpes, carreras."""
-    return _clamp(hist.speed(hist.since(0.8)) / 4.5)
+    """Energia de movimiento: forcejeos, golpes, carreras.
+
+    Exige que se muevan las DOS cosas, tronco y extremidades, y se queda con la
+    mas debil. Gesticular al hablar mueve mucho las manos y nada el tronco, y
+    antes eso puntuaba igual que una pelea: con camara real, dos personas
+    conversando disparaban el dominio de violencia cada 15 segundos.
+    """
+    window = hist.since(1.0)
+    core = _clamp(hist.speed(window, CORE_KP) / 1.6)
+    limbs = _clamp(hist.speed(window, LIMB_KP) / 3.2)
+    return min(core, limbs)
 
 
 def sig_proximity(hist: TrackHistory, ctx: dict) -> float:

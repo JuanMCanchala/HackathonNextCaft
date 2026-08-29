@@ -15,8 +15,10 @@ import numpy as np
 from .. import config
 from .buffer import RingBuffer
 from .capture import Camera
+from .analyzer import Analyzer
 from .events import EventStore, write_frames
 from .gate import Domain, Gate, load_domains
+from .notify import Notifier
 from .signals import TrackHistory
 from .tracker import PoseTracker
 from .vlm import VLMJudge
@@ -29,7 +31,7 @@ TRACK_TTL = 2.0
 
 
 class Pipeline:
-    def __init__(self, on_event=None):
+    def __init__(self, on_event=None, on_job=None):
         self.domains = load_domains(config.DOMAINS_DIR)
         if not self.domains:
             raise RuntimeError(f"No hay dominios en {config.DOMAINS_DIR}")
@@ -39,6 +41,7 @@ class Pipeline:
         self.tracker = PoseTracker(config.POSE_MODEL, device=config.DEVICE,
                                    imgsz=config.POSE_IMGSZ)
         self.judge = VLMJudge()
+        self.notifier = Notifier()
         self.events = EventStore()
         self.buffer = RingBuffer(config.BUFFER_SECONDS)
         self.camera = Camera(config.SOURCE)
@@ -46,6 +49,9 @@ class Pipeline:
         self.histories: dict[int, TrackHistory] = {}
         self.live: dict[int, dict] = {}
         self.on_event = on_event
+        self.on_job = on_job
+        self.analyzer = Analyzer(self.tracker, self.judge, self.events,
+                                 on_event=self._emit, on_job=self._emit_job)
         self.fps = 0.0
         self.status = "stopped"
         self.error: str | None = None
@@ -53,6 +59,8 @@ class Pipeline:
 
         self._preview: bytes | None = None
         self._preview_lock = threading.Lock()
+        self._viewer_seen = 0.0
+        self._preview_at = 0.0
         self._pool = ThreadPoolExecutor(max_workers=config.VLM_WORKERS, thread_name_prefix="vlm")
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -70,8 +78,42 @@ class Pipeline:
         if self._thread:
             self._thread.join(timeout=3.0)
         self._pool.shutdown(wait=False, cancel_futures=True)
-        self.camera.stop()
+        if self.camera:
+            self.camera.stop()
         self.status = "stopped"
+
+    def pause(self) -> None:
+        """Suelta la camara y para la inferencia, pero deja la API en pie.
+
+        Liberar el dispositivo es el objetivo: se apaga el LED de la webcam y
+        deja de comerse un nucleo mientras nadie esta demostrando nada.
+        """
+        if self.status == "paused":
+            return
+        self.status = "paused"
+        camera, self.camera = self.camera, None
+        if camera:
+            camera.stop()
+        self.histories.clear()
+        self.live = {}
+        self.fps = 0.0
+        with self._preview_lock:
+            self._preview = None
+
+    def resume(self) -> None:
+        """Vuelve a abrir la camara. El modelo ya esta cargado, asi que es rapido."""
+        if self.status != "paused":
+            return
+        self.error = None
+        try:
+            camera = Camera(config.SOURCE)
+            camera.start()
+        except Exception as exc:                          # noqa: BLE001
+            self.error = f"camara: {exc}"
+            self.status = "paused"
+            return
+        self.camera = camera
+        self.status = "running"
 
     @property
     def domain(self) -> Domain:
@@ -89,7 +131,13 @@ class Pipeline:
         warmed = False
 
         while not self._stop.is_set():
-            seq, t, frame = self.camera.read()
+            camera = self.camera
+            if camera is None or self.status == "paused":
+                last_seq = -1
+                time.sleep(0.15)
+                continue
+
+            seq, t, frame = camera.read()
             if seq is None or seq == last_seq:
                 time.sleep(0.004)
                 continue
@@ -184,14 +232,55 @@ class Pipeline:
         return [v * self._buffer_ratio for v in sample.bbox]
 
     def _emit(self, event) -> None:
+        # Un unico punto de salida: el aviso externo sale de aqui, asi cubre
+        # tanto el directo como el analisis de un video subido.
+        self.notifier.notify(event, self.domain.label)
         if self.on_event:
             try:
                 self.on_event(event)
             except Exception:                             # noqa: BLE001
                 pass
 
+    def _emit_job(self, job) -> None:
+        if self.on_job:
+            try:
+                self.on_job(job)
+            except Exception:                             # noqa: BLE001
+                pass
+
+    def analyze_file(self, path):
+        """Analiza un video subido. Pausa la camara para no pelear por la CPU."""
+        was_running = self.status == "running"
+        if was_running:
+            self.pause()
+
+        def done(_job):
+            if was_running:
+                self.resume()
+
+        return self.analyzer.submit(path, self.domain, on_done=done)
+
     # ------------------------------------------------------------------ preview
+    def _wants_preview(self, now: float) -> bool:
+        """Dibujar y codificar solo si alguien esta mirando, y como mucho a 15 fps.
+
+        Anotar el frame y comprimirlo a JPEG cuesta mas que la propia inferencia
+        de pose. Hacerlo siempre, mirase alguien o no, hundia los FPS del bucle.
+        """
+        if now - self._viewer_seen > 2.0:
+            return False
+        if now - self._preview_at < 1 / 15:
+            return False
+        self._preview_at = now
+        return True
+
+    def viewer_ping(self) -> None:
+        """Lo llama el stream MJPEG en cada frame que entrega."""
+        self._viewer_seen = time.time()
+
     def _render(self, frame: np.ndarray, tracks: list[dict], live: dict) -> None:
+        if not self._wants_preview(time.time()):
+            return
         out = frame.copy()
         threshold = self.domain.threshold
         for track in tracks:
@@ -246,7 +335,10 @@ class Pipeline:
             "people": len(self.live),
             "analyzing": self.analyzing,
             "offline": self.judge.offline,
-            "error": self.error or self.camera.error,
+            "alerts": {"channels": self.notifier.channels,
+                       "sent": self.notifier.sent,
+                       "error": self.notifier.last_error},
+            "error": self.error or (self.camera.error if self.camera else None),
             "tracks": [
                 {"id": tid, "score": round(info["score"], 3),
                  "signals": {k: round(v, 3) for k, v in info["signals"].items()}}

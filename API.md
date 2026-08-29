@@ -51,7 +51,7 @@ Si el socket se cae, reconectar: el `bootstrap` vuelve a dejar el front al dia.
 
 | Campo | Notas para la UI |
 |---|---|
-| `status` | `stopped`, `starting`, `running`. Hasta `running` no hay video: el modelo esta cargando |
+| `status` | `stopped`, `starting`, `running`, `paused`. Fuera de `running` no hay video |
 | `analyzing` | Cuantas llamadas al VLM hay en vuelo ahora mismo |
 | `offline` | `true` = sin `GEMINI_API_KEY`, los veredictos son sinteticos. Conviene avisarlo |
 | `tracks[].score` | 0-1. Comparar contra `threshold` para pintar a la persona en rojo |
@@ -127,6 +127,8 @@ orden cronologico, tipicamente 10. Animarlos a ~260 ms da el clip de evidencia.
 | POST | `/api/domain/{id}` | `{ active }`. Cambia de vertical en caliente, sin reiniciar |
 | GET | `/api/events` | `{ events: [Event] }` |
 | POST | `/api/events/{id}/feedback` | El `Event` actualizado |
+| POST | `/api/pause` | El estado ya pausado. Suelta la camara y detiene la inferencia |
+| POST | `/api/resume` | El estado ya reanudado. Reabre la camara |
 | GET | `/video.mjpg` | Stream MJPEG anotado |
 | GET | `/clips/{nombre}` | Un frame de evidencia |
 
@@ -158,7 +160,10 @@ conexion es un stream abierto.
 ## 4. Cosas que muerden
 
 - Antes de `status === "running"` el `<img>` del MJPEG da error: no lo montes
-  hasta entonces, o se ve el icono de imagen rota.
+  hasta entonces, o se ve el icono de imagen rota. Lo mismo en `paused`.
+- `pause` libera el dispositivo de camara, asi que `resume` puede tardar 1-2 s
+  en reabrirlo. Si otra aplicacion se quedo la webcam mientras tanto, `resume`
+  devuelve el estado con `error` puesto y `status` sigue en `paused`.
 - Los `id` de track se reciclan. Un `#7` de hace un minuto no es la misma
   persona. Para agrupar en la UI usa `event.id`, nunca `track_id`.
 - `signals` cambia de claves al cambiar de dominio. Itera el objeto, no leas
