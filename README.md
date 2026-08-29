@@ -160,11 +160,11 @@ precision, y la Etapa 2 debe tumbar los falsos positivos sin llevarse el recall.
 .venv\Scripts\python.exe -m tools.get_dataset rwf2000
 
 # 2. Etapa 1 sobre todo el conjunto: gratis y ~3x mas rapido que tiempo real
-.venv\Scripts\python.exe -m tools.bench datawf2000 --domain violence --no-vlm
+.venv\Scripts\python.exe -m tools.bench data\rwf2000 --domain violence --no-vlm
 
 # 3. Etapa 1+2 sobre una muestra, que si gasta cuota de API
-.venv\Scripts\python.exe -m tools.bench datawf2000 --domain violence ^
-    --limit 40 --out dataench_rwf2000.json
+.venv\Scripts\python.exe -m tools.bench data\rwf2000 --domain violence ^
+    --limit 40 --out data\bench_rwf2000.json
 ```
 
 Si teneis clips propios, `tools/prepare_dataset.py` los adapta igual. Grabar 10
