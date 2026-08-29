@@ -25,12 +25,26 @@ import cv2
 API = "http://127.0.0.1:8000"
 
 
-def api(path: str) -> bool:
+def api(path: str, method: str = "POST") -> bool:
     try:
-        req = urllib.request.Request(API + path, method="POST")
+        req = urllib.request.Request(API + path, method=method)
         with urllib.request.urlopen(req, timeout=8) as res:
             return 200 <= res.status < 300
     except (urllib.error.URLError, OSError):
+        return False
+
+
+def backend_running() -> bool:
+    """Si ya estaba en pausa, no hay que reanudarlo al terminar.
+
+    Reanudar un backend que el operador habia parado a proposito le cambia el
+    estado a su espalda y le vuelve a encender la camara.
+    """
+    try:
+        with urllib.request.urlopen(API + "/api/state", timeout=8) as res:
+            import json
+            return json.loads(res.read()).get("status") == "running"
+    except (urllib.error.URLError, OSError, ValueError):
         return False
 
 
@@ -85,18 +99,19 @@ def main() -> int:
 
     args.dir.mkdir(parents=True, exist_ok=True)
 
-    paused = api("/api/pause")
-    if paused:
+    estaba_activo = backend_running()
+    if estaba_activo:
+        api("/api/pause")
         print("  backend en pausa, camara liberada")
         time.sleep(1.5)
     else:
-        print("  (backend no responde; asumo que la camara esta libre)")
+        print("  (el backend no estaba activo; la camara deberia estar libre)")
 
     cap = cv2.VideoCapture(args.camera, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print(f"\n  No pude abrir la camara {args.camera}.")
         print("  Si el backend sigue con ella, pausalo desde el dashboard.")
-        if paused:
+        if estaba_activo:
             api("/api/resume")
         return 1
 
@@ -114,7 +129,7 @@ def main() -> int:
             written.append(path)
     finally:
         cap.release()
-        if paused:
+        if estaba_activo:
             api("/api/resume")
             print("\n  backend reanudado")
 
