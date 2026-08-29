@@ -5,6 +5,7 @@ import { provideClerk } from 'ngx-clerk';
 import { routes } from './app.routes';
 import { provideSentraCore } from './app.providers';
 import { environment } from '../environments/environment';
+import { clerkAppearance } from '../environments/clerk-appearance';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
       publishableKey: environment.clerk.publishableKey,
       signInUrl: environment.clerk.signInUrl,
       signUpUrl: environment.clerk.signUpUrl,
+      appearance: clerkAppearance,
     }),
     provideSentraCore(),
   ],

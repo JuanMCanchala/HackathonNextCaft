@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+@layer theme, base, clerk, components, utilities;
+
 @import 'tailwindcss';
 
 /* ─── Sentra design tokens (dark-first) ─────────────────────────────────── */
@@ -134,6 +136,10 @@ body {
     radial-gradient(circle at 85% 100%, rgba(255, 77, 94, 0.04), transparent 45%);
 }
 
+.sentra-auth-shell {
+  color-scheme: light;
+}
+
 .font-mono {
   font-family: var(--sentra-font-mono);
 }
@@ -205,5 +211,18 @@ body {
 
   button:disabled {
     cursor: not-allowed;
+  }
+}
+
+/* Clerk auth — refuerzo si Tailwind pisa inputs del SignIn */
+@layer clerk {
+  .cl-formFieldInput,
+  .cl-input {
+    color: #0f1520 !important;
+    background-color: #ffffff !important;
+  }
+
+  .cl-formButtonPrimary {
+    color: #ffffff !important;
   }
 }
