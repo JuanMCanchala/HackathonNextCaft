@@ -202,17 +202,22 @@ def sig_proximity(hist: TrackHistory, ctx: dict) -> float:
 
 
 def sig_fall(hist: TrackHistory, ctx: dict) -> float:
-    """Caida: estaba de pie, baja rapido y queda horizontal."""
+    """Caida: estaba de pie, baja rapido y queda horizontal.
+
+    La referencia previa usa el instante MAS erguido y MAS alto de los ultimos
+    segundos, no el promedio. Asi la senal no se apaga mientras la persona sigue
+    en el suelo, que es justo cuando hay que seguir alertando.
+    """
     recent = hist.since(0.6)
-    prior = hist.between(2.8, 1.2)
+    prior = hist.between(5.0, 1.0)
     if len(recent) < 3 or len(prior) < 3:
         return 0.0
     horiz_now = float(np.mean([s.horizontality for s in recent]))
     if horiz_now < 0.3:
         return 0.0
-    horiz_before = float(np.mean([s.horizontality for s in prior]))
+    horiz_before = min(s.horizontality for s in prior)
     y_now = float(np.mean([s.center[1] / s.scale for s in recent]))
-    y_before = float(np.mean([s.center[1] / s.scale for s in prior]))
+    y_before = min(s.center[1] / s.scale for s in prior)
     drop = _clamp((y_now - y_before) / 1.1)
     was_upright = _clamp(1.0 - horiz_before / 0.45)
     return _clamp((0.55 * horiz_now + 0.45 * drop) * (0.4 + 0.6 * was_upright))

@@ -6,6 +6,7 @@ Anadir una vertical no toca ni una linea de Python.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -56,8 +57,30 @@ def load_domains(directory: Path) -> dict[str, Domain]:
 
 @dataclass
 class _GateState:
-    above_since: float | None = None
+    """Ventana deslizante de elegibilidad, no una racha continua.
+
+    La deteccion de pose es ruidosa: un keypoint que se pierde un frame hunde el
+    score un instante. Exigir una racha perfecta hacia que cualquier parpadeo
+    reiniciase el contador y el disparo no llegase nunca.
+    """
+
+    window: deque = field(default_factory=lambda: deque(maxlen=240))
     last_trigger: float = -1e9
+
+    def observe(self, now: float, eligible: bool, span: float) -> bool:
+        self.window.append((now, eligible))
+        while self.window and now - self.window[0][0] > span:
+            self.window.popleft()
+        if len(self.window) < 3:
+            return False
+        covered = self.window[-1][0] - self.window[0][0]
+        if covered < span * 0.9:
+            return False
+        hits = sum(1 for _t, ok in self.window if ok)
+        return hits / len(self.window) >= 0.7
+
+    def reset(self) -> None:
+        self.window.clear()
 
 
 class Gate:
@@ -79,24 +102,20 @@ class Gate:
 
         now = ctx["now"]
         state = self._state.setdefault(hist.id, _GateState())
+
+        if (hist.last_seen - hist.first_seen) < self.domain.min_track_seconds:
+            return values, score, False
+
         eligible = (
             score >= self.domain.threshold
             and self.domain.meets_requirements(values)
-            and (hist.last_seen - hist.first_seen) >= self.domain.min_track_seconds
         )
-
-        if not eligible:
-            state.above_since = None
-            return values, score, False
-
-        if state.above_since is None:
-            state.above_since = now
-
-        sustained = (now - state.above_since) >= self.domain.sustain_seconds
+        sustained = state.observe(now, eligible, self.domain.sustain_seconds)
         cooled = (now - state.last_trigger) >= self.domain.cooldown_seconds
+
         if sustained and cooled:
             state.last_trigger = now
-            state.above_since = None
+            state.reset()
             return values, score, True
 
         return values, score, False
