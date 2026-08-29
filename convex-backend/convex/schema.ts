@@ -92,6 +92,10 @@ export default defineSchema({
     modelVersion: v.optional(v.string()),
     detectorVersion: v.optional(v.string()),
     suggestedCategory: v.optional(v.string()),
+    // Lo que el verificador dice que ve en los frames. Es la unica parte del
+    // sistema que explica el incidente con palabras, y hasta ahora se perdia
+    // en el pipeline sin llegar nunca a quien lee el aviso.
+    summary: v.optional(v.string()),
     evidenceRefs: v.optional(v.array(v.string())),
   }).index("by_workspace_source_event", ["workspaceId", "sourceNamespace", "sourceEventId"]),
 

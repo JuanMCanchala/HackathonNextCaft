@@ -135,6 +135,7 @@ export const acceptNormalized = internalMutation({
     timestamp: v.string(),
     category: v.string(),
     suggestedCategory: v.optional(v.union(v.string(), v.null())),
+    summary: v.optional(v.union(v.string(), v.null())),
     confidence: v.number(),
     modelVersion: v.string(),
     detectorVersion: v.string(),
@@ -148,6 +149,7 @@ export const acceptNormalized = internalMutation({
       timestamp: args.timestamp,
       category: args.category,
       suggestedCategory: args.suggestedCategory,
+      summary: args.summary,
       confidence: args.confidence,
       modelVersion: args.modelVersion,
       detectorVersion: args.detectorVersion,
@@ -237,6 +239,7 @@ export const acceptNormalized = internalMutation({
       ...(observation.suggestedCategory !== null
         ? { suggestedCategory: observation.suggestedCategory }
         : {}),
+      ...(observation.summary !== null ? { summary: observation.summary } : {}),
       ...(observation.evidenceRefs.length > 0 ? { evidenceRefs: observation.evidenceRefs } : {}),
     });
 

@@ -12,6 +12,9 @@ export const CATEGORY_ALLOWLIST = [
   "ppe_missing",
 ] as const;
 
+/** Un parrafo basta para explicar una escena; el resto es ruido en la ficha. */
+const MAX_SUMMARY = 600;
+
 export type NormalizedCategory = (typeof CATEGORY_ALLOWLIST)[number];
 
 export type NormalizeInput = {
@@ -20,6 +23,7 @@ export type NormalizeInput = {
   timestamp: string;
   category: string;
   suggestedCategory?: string | null | undefined;
+  summary?: string | null | undefined;
   confidence: unknown;
   modelVersion?: string | null | undefined;
   detectorVersion?: string | null | undefined;
@@ -31,6 +35,7 @@ export type NormalizedObservation = {
   sourceNamespace: string;
   category: NormalizedCategory;
   suggestedCategory: string | null;
+  summary: string | null;
   confidence: number;
   occurredAtMs: number;
   modelVersion: string;
@@ -183,6 +188,11 @@ export function normalizeObservation(
       sourceNamespace: sourceNamespace.value,
       category: category.value,
       suggestedCategory: suggested,
+      // Se acota: lo escribe un modelo y acaba en una pagina publica.
+      summary:
+        typeof input.summary === "string" && input.summary.trim().length > 0
+          ? input.summary.trim().slice(0, MAX_SUMMARY)
+          : null,
       confidence: confidence.value,
       occurredAtMs: occurredAtMs.value,
       modelVersion: modelVersion.value,
@@ -205,6 +215,7 @@ export function intakePayloadFingerprint(parts: {
     sourceNamespace: parts.observation.sourceNamespace,
     category: parts.observation.category,
     suggestedCategory: parts.observation.suggestedCategory,
+    summary: parts.observation.summary,
     confidence: parts.observation.confidence,
     occurredAtMs: parts.observation.occurredAtMs,
     modelVersion: parts.observation.modelVersion,

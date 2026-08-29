@@ -272,6 +272,10 @@ class ConvexIntake:
                 event.created_at, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
             "category": categoria,
             "suggestedCategory": event.verdict.incident_type,
+            # Lo que el verificador dice que ve. Es la unica parte del sistema
+            # que explica el incidente con palabras, y hasta ahora se quedaba
+            # en el panel local sin llegar a quien recibe el aviso.
+            "summary": event.verdict.evidence,
             "confidence": max(0.0, min(1.0, float(event.verdict.confidence))),
             "modelVersion": config.GEMINI_MODEL,
             "detectorVersion": f"{config.POSE_MODEL}@{config.POSE_IMGSZ}",

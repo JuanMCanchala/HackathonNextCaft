@@ -77,6 +77,7 @@ export const publicIncident = internalQuery({
       lastObservedAt: incidente.lastObservedAt,
       confidence: deteccion?.confidence ?? null,
       suggestedCategory: deteccion?.suggestedCategory ?? null,
+      summary: deteccion?.summary ?? null,
       // La ficha ensena el clip completo si existe; la imagen queda de
       // respaldo para incidentes guardados antes de que hubiera video.
       clipUrl: parseEvidence(deteccion?.evidenceRefs ?? []).video,

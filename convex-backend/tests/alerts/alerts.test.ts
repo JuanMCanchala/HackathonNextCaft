@@ -539,3 +539,154 @@ describe("ficha publica de un incidente", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("analisis de la escena y consulta", () => {
+  afterEach(() => {
+    delete process.env.DEMO_PUBLIC_WORKSPACE_ID;
+    delete process.env.GEMINI_API_KEY;
+  });
+
+  async function incidenteCon(t: SentraTest, extra: Record<string, unknown>) {
+    const { workspaceId } = await t.mutation(internal.seed.bootstrap, {
+      adminTokenIdentifier: "issuer|admin-ia",
+      adminSubjectId: "admin-ia",
+      workspaceName: "Planta IA",
+    });
+    const camara = await t
+      .withIdentity({ tokenIdentifier: "issuer|admin-ia", subject: "admin-ia" })
+      .mutation(api.cameras.create, {
+        workspaceId: workspaceId as Id<"workspaces">,
+        externalId: "cam-ia",
+        label: "Nave 2",
+      });
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId as Id<"workspaces">, camara.id as Id<"cameras">, extra),
+    );
+    process.env.DEMO_PUBLIC_WORKSPACE_ID = workspaceId as string;
+    return resultado.incidentId;
+  }
+
+  it("la ficha ensena el analisis del verificador", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, {
+      summary: "Dos personas forcejean junto a la estanteria y una cae al suelo.",
+    });
+
+    const res = await t.fetch(`/incidente?id=${incidentId}`, { method: "GET" });
+    const html = await res.text();
+    expect(html).toContain("Dos personas forcejean junto a la estanteria");
+    expect(html).toContain("Verificado por Gemini");
+  });
+
+  it("un analisis con html no se cuela en la pagina", async () => {
+    // Lo escribe un modelo: es texto ajeno y va a parar a una pagina publica.
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, {
+      summary: "<img src=x onerror=alert(1)>",
+    });
+
+    const html = await (await t.fetch(`/incidente?id=${incidentId}`, { method: "GET" })).text();
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&lt;img src=x");
+  });
+
+  it("un incidente sin analisis lo dice en vez de quedarse en blanco", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, {});
+
+    const html = await (await t.fetch(`/incidente?id=${incidentId}`, { method: "GET" })).text();
+    expect(html).toContain("antes de que el sistema");
+    expect(html).not.toContain("Verificado por Gemini");
+  });
+
+  it("preguntar sin asistente configurado responde 503, no un fallo raro", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, { summary: "Escena." });
+
+    const res = await t.fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: incidentId, pregunta: "Que pasa?" }),
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("una pregunta vacia se rechaza antes de gastar una llamada", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, { summary: "Escena." });
+    process.env.GEMINI_API_KEY = "clave-de-prueba";
+
+    const res = await t.fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: incidentId, pregunta: "   " }),
+    });
+    expect(res.status).toBe(400);
+    expect(llamadas).toHaveLength(0);
+  });
+
+  it("preguntar por un incidente de otro workspace responde 404", async () => {
+    // La consulta va anclada al workspace del deployment igual que la ficha:
+    // preguntar no puede ser un rodeo para leer lo que la pagina no ensena.
+    const t = createTestBackend();
+    await incidenteCon(t, { summary: "Escena." });
+    process.env.GEMINI_API_KEY = "clave-de-prueba";
+
+    const res = await t.fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "jx7000000000000000000000000000", pregunta: "Que pasa?" }),
+    });
+    expect(res.status).toBe(404);
+    expect(llamadas).toHaveLength(0);
+  });
+
+  it("contesta con lo que devuelve el modelo", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, { summary: "Una persona en el suelo." });
+    process.env.GEMINI_API_KEY = "clave-de-prueba";
+    respuesta = () =>
+      new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "Conviene acudir a la nave." }] } }],
+        }),
+        { status: 200 },
+      );
+
+    const res = await t.fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: incidentId, pregunta: "Voy?" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()) as { texto: string }).toEqual({
+      texto: "Conviene acudir a la nave.",
+    });
+
+    const enviado = JSON.parse(String(llamadas[0]?.init.body ?? "{}")) as {
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    // El modelo recibe el contexto del incidente, no solo la pregunta suelta.
+    expect(enviado.contents[0]?.parts[0]?.text).toContain("Una persona en el suelo");
+    expect(enviado.contents[0]?.parts[0]?.text).toContain("Nave 2");
+  });
+
+  it("si el modelo falla lo dice y no revienta la pagina", async () => {
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, { summary: "Escena." });
+    process.env.GEMINI_API_KEY = "clave-de-prueba";
+    respuesta = () => new Response("quota", { status: 429 });
+
+    const res = await t.fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: incidentId, pregunta: "Voy?" }),
+    });
+    expect(res.status).toBe(502);
+    const cuerpo = (await res.json()) as { error: string };
+    expect(cuerpo.error).toContain("429");
+    // El cuerpo del proveedor no se reenvia tal cual.
+    expect(JSON.stringify(cuerpo)).not.toContain("clave-de-prueba");
+  });
+});
