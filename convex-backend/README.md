@@ -1,6 +1,6 @@
-# Hackathon NextCraft backend
+# Hackathon NextCraft — `convex-backend`
 
-A strict TypeScript Convex backend scaffold with the Convex Agent Component and an OpenAI-powered support agent.
+Sentra **product** backend (Convex / TypeScript). This package is intentionally separate from `/backend`, which holds the **Python model / detection pipeline**.
 
 ## Stack
 

@@ -1,8 +1,8 @@
 {
-  "name": "hackathon-nextcraft-backend",
+  "name": "hackathon-nextcraft-convex-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Production-oriented Convex backend with an AI support agent.",
+  "description": "Sentra product Convex backend (distinct from the Python model package in /backend).",
   "packageManager": "pnpm@11.11.0",
   "scripts": {
     "build": "pnpm typecheck",

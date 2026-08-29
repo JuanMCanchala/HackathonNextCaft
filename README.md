@@ -6,6 +6,16 @@ sin entrenar un modelo por vertical: cambiar de dominio es cambiar un YAML.
 
 ---
 
+## Layout del monorepo
+
+| Carpeta | Rol |
+|---|---|
+| `backend/` | Pipeline del **modelo** (Python): captura, VLM, dominios YAML |
+| `convex-backend/` | Backend de **producto Sentra** (Convex/TypeScript): workspaces, cámaras, incidentes, API contract |
+| `frontend/` | UI del producto |
+
+---
+
 ## Por que no entrenamos un modelo
 
 Es la pregunta que hara el jurado. La respuesta corta: la literatura de 2025-2026

@@ -1,98 +1,61 @@
-# Design: Sentra Backend Secure Vertical Slice
+# Design: Sentra Backend
 
 ## Technical Approach
 
-Convex-first vertical slice: Clerk-authenticated public queries/mutations return API-CONTRACT DTOs (`1.0.0-mvp`) identical to future `/v1`. Detection intake is `internalMutation` only (no browser path). Pure helpers (normalize, group, severity, transition) behind thin Convex adapters; one txn owns idempotency → detection → grouping → audit/events. Specs: workspace-authorization, camera-registration, detection-intake, incident-operations. Isolate `chat.ts` / Agent — never Sentra auth baseline.
+Use the Convex product backend in `convex-backend/` as a single workspace-isolated deployment, while preserving the Python model package in `backend/` as an upstream producer. Public Convex queries/mutations serve Angular and return API-CONTRACT `1.0.0-mvp` DTOs; normalized model intake is private and funnels into one transactional use case. Keep pure domain modules behind a deep feature interface; Convex functions are adapters, not duplicated business logic. Existing Agent Component/chat remains isolated and is not an authorization baseline.
 
 ## Architecture Decisions
 
-| Option | Tradeoff | Decision |
-|--------|----------|----------|
-| Convex vs HTTP-first | HTTP unlocks OpenAPI early; delays Angular realtime | **Convex-first**; HTTP later reuses DTO mappers |
-| Public vs internal intake | Public simpler, leaks ingestion | **`internalMutation` only**; later httpAction+secret optional |
-| Identity key | subject weaker across issuers | **`tokenIdentifier`** for membership |
-| Client workspaceId | Convenient, insecure | **Membership-gated**; never trust alone |
-| Grouping locus | Query races | **Inside intake txn** + workspace-first indexes |
-| Severity vs confidence | Mixing breaks trust | **Independent**; rule version; confidence immutable |
-| Foreign ID response | FORBIDDEN leaks existence | **`NOT_FOUND`** non-disclosing |
-| Disabled camera | Soft-accept vs reject | **Reject** (DOMAIN) |
-| Test runner | Guidelines=vitest; repo=Jest | **Jest + convex-test**; no vitest migration |
+| Decision | Alternatives | Rationale |
+|---|---|---|
+| Self-hosted Compose has backend (3210), site proxy (3211), optional dashboard (6791) | `convex dev` as runtime; managed-only | Compose is the documented persistent local service boundary; `convex dev` is a subprocess/developer tool, not a production-like service. Dashboard is opt-in and never required for app use. |
+| Named persistent Convex volume | Ephemeral container or host bind by default | Restarts/recreates preserve data and local configuration; reset requires explicit volume deletion. |
+| Local origin and stable tunnel origin are separate explicit profiles | Implicit wildcard trust | Direct localhost is the default; a named Cloudflare Tunnel hostname is opt-in, limited to declared frontend/origin paths, and never becomes product auth. |
+| Clerk for product users; infrastructure admin key for Convex operations | Treat admin key as a user credential | Clerk JWT derives `tokenIdentifier` and active membership. The Convex admin key is server/operator-only, never browser-visible, and does not grant workspace membership. |
+| Pure domain seams plus one mutation transaction | Rules in queries/actions; multi-call intake | Normalize, grouping, severity, and transition logic are deterministic and unit-testable. A mutation atomically performs idempotency, detection/linkage, incident state, timeline, audit, and event records. |
 
-### MVP policy defaults
-
-| Policy | Default |
-|--------|---------|
-| Grouping window | 45s inclusive (`occurredAt` vs open `lastObservedAt`) |
-| Open eligibility | Group only `detected`\|`triaged` |
-| Late event | New incident; still store detection |
-| Categories | Allowlist `intrusion`,`smoke`,`fall`; trim+lowercase; else validation error |
-| Severity `sev-v1` | fall→critical, smoke→high, intrusion→high; missing rule → fail closed |
-| Triage idempotency | `workspaceId+incidentId+idempotencyKey`; mismatch → `IDEMPOTENCY_CONFLICT` |
-| Clerk | `auth.config.ts` issuer+applicationID from env |
-| Seed | Internal mutation: one workspace + admin membership |
-| Seed settings | `retentionDays: 30`, `timezone: "UTC"` |
+Compose health/readiness must distinguish process health from dependency readiness: backend/site checks are direct HTTP probes; readiness is non-success while required services initialize or fail. Dashboard health is optional. Missing/invalid admin key, tunnel token, hostname, or required origin configuration fails closed with redacted actionable errors; the no-dashboard local path must not require an admin key beyond documented setup.
 
 ## Data Flow
 
-```
-Angular --JWT--> Clerk
-Angular --JWT--> Convex public (workspaces|cameras|incidents)
-                    |-> AuthZ: identity → membership → role
-                    |-> DB workspace-first indexes
-                    \-> API-CONTRACT DTOs
-
-Model service --> detections.acceptNormalized (internalMutation)
-                    |-> validate → camera ownership → disabled reject
-                    |-> idempotency → detection → group/create
-                    |-> severity (create) → timeline/audit/events
-                    \-> {detectionId, incidentId, disposition}
+```text
+Angular + Clerk JWT ──> Convex 3210/3211 ──> authz(tokenIdentifier,membership)
+                                      └──> bounded queries ──> contract DTOs
+Model service ──private credential──> internal intake ──> one transaction ──> DB/events
+Optional cloudflared: stable host ──> declared local origin only
 ```
 
-Roles: viewer read; operator+admin triage; workspace_admin camera create.
+Frontend receives `NEXT_PUBLIC_CONVEX_URL` (or equivalent frontend runtime config) for the selected local/stable origin and uses `ConvexProviderWithAuth` with Clerk token fetching; it must not receive `CONVEX_ADMIN_KEY` or internal credentials. Product Clerk authentication remains independent of tunnel and dashboard access.
+
+Future HTTP `/v1` and MCP adapters should call the same use-case interface. Future Convex functions belong in feature modules with validators; internal intake remains `internalMutation` behind an authenticated adapter. Internal credential binding must prove service-to-workspace/camera authorization before trusting asserted IDs. Preserve opaque IDs, RFC3339 DTO timestamps, closed enums, `Page<T>`, safe errors/request IDs, and API-CONTRACT field names even when storage uses epoch milliseconds and separate link/timeline tables.
 
 ## File Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `convex/schema.ts` | Modify | Sentra tables/indexes; keep `threadMetadata` |
-| `convex/auth.config.ts` | Create | Clerk JWT provider |
-| `convex/lib/authz.ts` | Create | requireIdentity/membership/role |
-| `convex/lib/errors.ts` | Create | Stable codes + requestId |
-| `convex/lib/dto/*` | Create | Doc→API-CONTRACT mappers |
-| `convex/lib/domain/*` | Create | Pure normalize/group/severity/transition |
-| `convex/workspaces.ts` | Create | list/get Workspace DTOs |
-| `convex/cameras.ts` | Create | create/list/get Camera DTO |
-| `convex/detections.ts` | Create | acceptNormalized internalMutation |
-| `convex/incidents.ts` | Create | list/get/triage |
-| `convex/seed.ts` | Create | Internal bootstrap seed |
-| `convex/chat.ts` | Modify | Isolate; not Sentra auth |
-| `convex/convex.config.ts` | Modify | Typed env (Clerk, secrets) |
-| `tests/**/*.test.ts` | Create | Unit + convex-test |
-| `docs/API-CONTRACT*` | Modify | Only if DTO gaps; keep 1.0.0-mvp |
-
-**Tables:** workspaces; memberships (`by_token_and_workspace`); cameras (`by_workspace_and_externalId`); detections (`by_workspace_source_event`); incidents (`by_workspace_state`, `by_workspace_camera_category_lastObserved`); incidentDetections; incidentTimeline; auditEntries; idempotencyRecords (`by_workspace_and_key`). Indexes lead with `workspaceId`.
-
-## Interfaces / Contracts
-
-Public returns match `API-CONTRACT.md` §5 / `api-contract.schemas.json` 1:1 (Workspace, Camera, IncidentSummary/Detail, Page). IDs = opaque Convex `_id` strings. Store epoch ms; DTO timestamps RFC3339 UTC. Every function has `v.*` validators; lists use `paginationOptsValidator`. Errors: UNAUTHENTICATED|FORBIDDEN|NOT_FOUND|VALIDATION_ERROR|CONFLICT|IDEMPOTENCY_CONFLICT + requestId.
+| File | Action | Purpose |
+|---|---|---|
+| `convex-backend/convex/schema.ts` | Modify | Workspace-first tables/indexes; immutable/link/audit records. |
+| `convex-backend/convex/{auth.config.ts,convex.config.ts}` | Modify | Clerk issuer and typed secret configuration; retain Agent mount. |
+| `convex-backend/convex/lib/{authz,domain,dto}/*` | Create/modify | Deep auth/use-case seams, pure rules, contract mappers. |
+| `convex-backend/convex/{cameras,detections,incidents,workspaces}.ts` | Create/modify | Validated public adapters and private intake. |
+| `convex-backend/compose*.yml`, `.env.example`, docs | Create | Compose profiles, volume, probes, origins/tunnel, reset/recovery. |
+| `convex-backend/tests/**` | Create/modify | Jest units plus deliberate Convex harness. |
 
 ## Testing Strategy
 
-| Layer | What | Approach |
-|-------|------|----------|
-| Unit | domain + DTO mappers | Jest RED-first (BACKEND-TEST-CASES) |
-| Convex | isolation, idempotency, triage versioning | convex-test; assert DTO vs JSON schema |
-| E2E/HTTP | — | Out of scope |
+Strict TDD: Jest/ts-jest RED tests cover normalization, category, grouping boundaries, severity policy, transitions, DTOs, origin/secret validation. A separate deliberate `convex-test` + edge-runtime harness (despite the Jest default) covers auth isolation, indexes, concurrent idempotency, atomic rollback, and realtime-visible committed state. Run `pnpm test`, typecheck, lint, format, build, and `convex dev --once`; do not claim integration coverage from Jest alone.
 
 ## Threat Matrix
 
-N/A — no routing/shell/subprocess/VCS/executable-classification/process-integration boundary.
+N/A — no shell, subprocess, VCS/PR automation, executable-file classification, or process-integration boundary is being designed; `cloudflared` is an infrastructure configuration, not an application subprocess contract.
 
 ## Migration / Rollout
 
-Additive schema + modules. Rollback: disable Sentra / revert schema+code; preserve chat. No data migration.
+Add Compose and schema additively. Start backend/site, verify health then readiness, seed only through an internal operation, and enable dashboard/tunnel only by explicit profile. Rollback disables Sentra adapters and reverts code/schema together; preserve the Agent data. Reset is `down` plus explicit volume deletion (document data loss); recovery reuses the same volume. Do not expose stable origins until health, auth, and DTO contract checks pass.
 
-## Open Questions
+## Open Questions (blocking policy)
 
-- [ ] Exact Clerk issuer/applicationID (deploy secrets)
-- [ ] Triage notes/assignment required? (contract optional → keep optional)
+- What exact internal credential mechanism and service-to-workspace/camera binding are approved?
+- What category taxonomy, grouping window/boundary/late-event policy, and severity rule values/version are authoritative?
+- Is self-hosted Compose strictly development/support-only, or an accepted deployment mode?
+- Which Clerk issuer/application ID and bootstrap/provisioning procedure are approved?
+- Which lifecycle dismissal rule and triage idempotency scope are authoritative?
