@@ -22,6 +22,71 @@ import { internalQuery } from "./_generated/server";
 
 const MAX_FILAS = 50;
 
+/**
+ * Un incidente concreto, para el enlace del correo de aviso.
+ *
+ * Mismas reglas que la lista: solo responde para el workspace declarado en
+ * `DEMO_PUBLIC_WORKSPACE_ID`. Un id de otro workspace no existe aqui, asi que
+ * el enlace no sirve como sonda para asomarse a datos ajenos.
+ *
+ * Aqui si se acepta el id por parametro, y no pasa nada: quien tiene el enlace
+ * ya recibio el aviso con esta misma informacion. Lo que protege no es que el
+ * id sea secreto, es que la consulta esta anclada al workspace del deployment.
+ */
+export const publicIncident = internalQuery({
+  args: { incidentId: v.string() },
+  handler: async (ctx, args) => {
+    const permitido = process.env.DEMO_PUBLIC_WORKSPACE_ID;
+    if (!permitido) {
+      return null;
+    }
+
+    const id = ctx.db.normalizeId("incidents", args.incidentId);
+    if (id === null) {
+      return null;
+    }
+    const incidente = await ctx.db.get(id);
+    if (incidente === null || incidente.workspaceId !== (permitido as never)) {
+      return null;
+    }
+
+    const camara = await ctx.db.get(incidente.cameraId);
+    const enlace = await ctx.db
+      .query("incidentDetections")
+      .withIndex("by_workspace_and_incident", (q) =>
+        q.eq("workspaceId", incidente.workspaceId).eq("incidentId", id),
+      )
+      .first();
+    const deteccion = enlace === null ? null : await ctx.db.get(enlace.detectionId);
+
+    const linea = await ctx.db
+      .query("incidentTimeline")
+      .withIndex("by_workspace_and_incident", (q) =>
+        q.eq("workspaceId", incidente.workspaceId).eq("incidentId", id),
+      )
+      .take(30);
+
+    return {
+      category: incidente.category,
+      severity: incidente.severity,
+      severityRuleVersion: incidente.severityRuleVersion,
+      state: incidente.state,
+      camera: camara?.label ?? "camara",
+      openedAt: incidente.openedAt,
+      lastObservedAt: incidente.lastObservedAt,
+      confidence: deteccion?.confidence ?? null,
+      suggestedCategory: deteccion?.suggestedCategory ?? null,
+      clipUrl: (deteccion?.evidenceRefs ?? []).find((ref) => ref.startsWith("https://")) ?? null,
+      // Cuantas observaciones se agruparon: es lo que distingue un destello de
+      // un incidente sostenido.
+      observations: linea.filter((e) => e.type === "detection.grouped").length + 1,
+      alerts: linea
+        .filter((e) => String(e.type).startsWith("alert."))
+        .map((e) => ({ type: e.type, createdAt: e.createdAt })),
+    };
+  },
+});
+
 export const publicIncidents = internalQuery({
   args: {
     limit: v.optional(v.number()),

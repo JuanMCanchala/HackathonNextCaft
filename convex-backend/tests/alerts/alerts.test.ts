@@ -353,7 +353,7 @@ describe("el correo lleva la escena", () => {
     const html = htmlEnviado();
     expect(html).not.toContain("<img");
     expect(html).not.toContain("192.168.1.40");
-    expect(html).toContain("Sin fotograma disponible");
+    expect(html).toContain("Sin clip disponible");
   });
 
   it("sin evidencia el correo sigue diciendo que ha pasado y donde", async () => {
@@ -420,5 +420,122 @@ describe("el correo lleva la escena", () => {
     const resend = llamadas.find((c) => c.url.includes("api.resend.com"));
     const cuerpo = JSON.parse(String(resend?.init.body ?? "{}"));
     expect(cuerpo.to).toEqual(["uno@ejemplo.com", "dos@ejemplo.com"]);
+  });
+});
+
+describe("el correo lleva al panel", () => {
+  async function incidenteCon(t: SentraTest, refs: string[]) {
+    const { workspaceId, cameraId } = await sembrar(t);
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId, cameraId, { evidenceRefs: refs }),
+    );
+    return resultado.incidentId;
+  }
+
+  function htmlEnviado(): string {
+    const resend = llamadas.find((c) => c.url.includes("api.resend.com"));
+    return String(JSON.parse(String(resend?.init.body ?? "{}")).html ?? "");
+  }
+
+  afterEach(() => {
+    delete process.env.DEMO_PUBLIC_URL;
+  });
+
+  it("el boton apunta a la ficha de ESTE incidente", async () => {
+    const t = createTestBackend();
+    process.env.DEMO_PUBLIC_URL = "https://ejemplo.convex.site/demo";
+    const incidentId = await incidenteCon(t, []);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const html = htmlEnviado();
+    expect(html).toContain(`https://ejemplo.convex.site/incidente?id=${incidentId}`);
+    expect(html).toContain("Abrir el incidente en el panel");
+  });
+
+  it("sin panel configurado el correo sigue siendo util", async () => {
+    // El aviso no puede depender de que exista un panel publico.
+    const t = createTestBackend();
+    const incidentId = await incidenteCon(t, []);
+
+    await t.action(internal.alerts.dispatch, { incidentId, disposition: "created" });
+
+    const html = htmlEnviado();
+    expect(html).not.toContain("Abrir el incidente");
+    expect(html).toContain("agresion");
+    expect(html).toContain("Anden 3");
+  });
+});
+
+describe("ficha publica de un incidente", () => {
+  afterEach(() => {
+    delete process.env.DEMO_PUBLIC_WORKSPACE_ID;
+  });
+
+  async function incidenteEn(t: SentraTest, nombre: string) {
+    const { workspaceId } = await t.mutation(internal.seed.bootstrap, {
+      adminTokenIdentifier: `issuer|admin-${nombre}`,
+      adminSubjectId: `admin-${nombre}`,
+      workspaceName: nombre,
+    });
+    const camara = await t
+      .withIdentity({ tokenIdentifier: `issuer|admin-${nombre}`, subject: `admin-${nombre}` })
+      .mutation(api.cameras.create, {
+        workspaceId: workspaceId as Id<"workspaces">,
+        externalId: `cam-${nombre}`,
+        label: "Nave 2",
+      });
+    const resultado = await t.mutation(
+      internal.detections.acceptNormalized,
+      observacion(workspaceId as Id<"workspaces">, camara.id as Id<"cameras">, {
+        sourceEventId: `evt-${nombre}`,
+        evidenceRefs: ["https://cdn.ejemplo.com/clip.gif"],
+      }),
+    );
+    return { workspaceId: workspaceId as string, incidentId: resultado.incidentId };
+  }
+
+  it("muestra el clip y los datos del incidente", async () => {
+    const t = createTestBackend();
+    const { workspaceId, incidentId } = await incidenteEn(t, "propia");
+    process.env.DEMO_PUBLIC_WORKSPACE_ID = workspaceId;
+
+    const res = await t.fetch(`/incidente?id=${incidentId}`, { method: "GET" });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("https://cdn.ejemplo.com/clip.gif");
+    expect(html).toContain("Nave 2");
+    expect(html).toContain("Agresion");
+  });
+
+  it("un incidente de otro workspace no existe para esta vista", async () => {
+    // Es la propiedad que importa: tener el id no basta, la consulta esta
+    // anclada al workspace que el deployment declara.
+    const t = createTestBackend();
+    const propia = await incidenteEn(t, "propia");
+    const ajena = await incidenteEn(t, "ajena");
+    process.env.DEMO_PUBLIC_WORKSPACE_ID = propia.workspaceId;
+
+    const res = await t.fetch(`/incidente?id=${ajena.incidentId}`, { method: "GET" });
+    expect(res.status).toBe(404);
+    expect(await res.text()).not.toContain("Nave 2");
+  });
+
+  it("un id inventado responde 404 sin reventar", async () => {
+    const t = createTestBackend();
+    const { workspaceId } = await incidenteEn(t, "propia");
+    process.env.DEMO_PUBLIC_WORKSPACE_ID = workspaceId;
+
+    const res = await t.fetch("/incidente?id=esto-no-es-un-id", { method: "GET" });
+    expect(res.status).toBe(404);
+  });
+
+  it("sin la vista habilitada responde 404", async () => {
+    const t = createTestBackend();
+    const { incidentId } = await incidenteEn(t, "propia");
+
+    const res = await t.fetch(`/incidente?id=${incidentId}`, { method: "GET" });
+    expect(res.status).toBe(404);
   });
 });

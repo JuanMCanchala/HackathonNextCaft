@@ -87,9 +87,12 @@ function escapar(texto: string): string {
  * algunas vistas y Outlook no entiende flexbox, asi que lo que aqui parece
  * anticuado es lo unico que se ve igual en todas partes.
  *
- * La imagen puede no cargar nunca: muchos clientes bloquean imagenes remotas
- * hasta que el lector lo autoriza. Por eso el texto de arriba ya dice que ha
- * pasado y donde, y la foto es un extra, no el mensaje.
+ * El clip va como GIF animado. Un correo no reproduce video (Gmail elimina la
+ * etiqueta), y el GIF si se mueve en Gmail, Apple Mail y clientes moviles;
+ * Outlook de escritorio ensena el primer fotograma, que sigue siendo la
+ * escena. Aun asi muchos clientes bloquean imagenes remotas hasta que el
+ * lector lo autoriza: por eso el titulo ya dice que ha pasado y donde, y la
+ * imagen es un extra, no el mensaje.
  */
 function cuerpoHtml(datos: {
   category: string;
@@ -98,90 +101,116 @@ function cuerpoHtml(datos: {
   openedAt: number;
   confidence: number | null;
   evidenceUrl: string | null;
+  incidentUrl: string | null;
   demoUrl: string | null;
 }): string {
   const color = COLOR_SEVERIDAD[datos.severity] ?? "#8b95a3";
   const tipo = escapar(ETIQUETA[datos.category] ?? datos.category);
   const cuando = new Date(datos.openedAt).toLocaleString("es-ES", {
-    dateStyle: "medium",
+    dateStyle: "long",
     timeStyle: "medium",
   });
+  const sans = "font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif";
 
   const imagen =
     datos.evidenceUrl === null
-      ? `<tr><td style="padding:0 24px 20px;color:#5d6673;font-size:13px;
-             font-family:Arial,Helvetica,sans-serif">
-           Sin fotograma disponible para este incidente.
+      ? `<tr><td style="padding:0 28px 4px">
+           <div style="border:1px solid #1e242c;border-radius:10px;padding:38px 16px;
+                       text-align:center;color:#5d6673;font-size:13px;${sans}">
+             Sin clip disponible para este incidente
+           </div>
          </td></tr>`
-      : `<tr><td style="padding:0 24px 20px">
-           <img src="${escapar(datos.evidenceUrl)}" width="512" alt="Fotograma del incidente"
-                style="display:block;width:100%;max-width:512px;height:auto;
-                       border-radius:8px;border:1px solid #2a3038">
+      : `<tr><td style="padding:0 28px 6px">
+           <img src="${escapar(datos.evidenceUrl)}" width="504" alt="Clip del incidente"
+                style="display:block;width:100%;max-width:504px;height:auto;
+                       border-radius:10px;border:1px solid #1e242c">
+         </td></tr>
+         <tr><td style="padding:0 28px 16px;text-align:center;color:#4a525e;
+                        font-size:11.5px;${sans}">
+           Clip del momento de la deteccion, en bucle
          </td></tr>`;
 
   const fila = (etiqueta: string, valor: string) => `
     <tr>
-      <td style="padding:7px 0;color:#5d6673;font-size:12px;width:110px;
-                 font-family:Arial,Helvetica,sans-serif">${etiqueta}</td>
-      <td style="padding:7px 0;color:#e8ebef;font-size:13px;font-weight:bold;
-                 font-family:Arial,Helvetica,sans-serif">${valor}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #161b21;color:#6b7482;
+                 font-size:12.5px;${sans}">${etiqueta}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #161b21;color:#e8ebef;
+                 font-size:13.5px;font-weight:600;text-align:right;${sans}">${valor}</td>
     </tr>`;
+
+  const boton =
+    datos.incidentUrl === null
+      ? ""
+      : `<tr><td style="padding:22px 28px 4px">
+           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+             <tr><td align="center" bgcolor="${color}" style="border-radius:9px">
+               <a href="${escapar(datos.incidentUrl)}"
+                  style="display:block;padding:14px 22px;color:#08090b;font-size:14px;
+                         font-weight:700;text-decoration:none;letter-spacing:.01em;${sans}">
+                 Abrir el incidente en el panel
+               </a>
+             </td></tr>
+           </table>
+         </td></tr>`;
 
   const pie =
     datos.demoUrl === null
       ? ""
-      : `<tr><td style="padding:0 24px 24px">
+      : `<tr><td style="padding:12px 28px 0;text-align:center">
            <a href="${escapar(datos.demoUrl)}"
-              style="color:#5aa9ff;font-size:12px;text-decoration:none;
-                     font-family:Arial,Helvetica,sans-serif">
+              style="color:#5d6673;font-size:12px;text-decoration:none;${sans}">
              Ver todos los incidentes registrados
            </a>
          </td></tr>`;
 
   return `<!doctype html>
-<html lang="es"><body style="margin:0;padding:24px 12px;background:#f4f5f7">
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light"></head>
+<body style="margin:0;padding:28px 12px;background:#eef0f3">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr><td align="center">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560"
-         style="width:560px;max-width:100%;background:#0b0d10;border-radius:12px;
-                overflow:hidden">
+         style="width:560px;max-width:100%;background:#0b0d10;border-radius:14px;
+                overflow:hidden;border:1px solid #1a1f26">
+    <tr><td style="height:4px;background:${color};font-size:0;line-height:0">&nbsp;</td></tr>
     <tr>
-      <td style="padding:22px 24px 6px">
-        <span style="display:inline-block;padding:4px 11px;border-radius:5px;
-                     font-size:11px;font-weight:bold;letter-spacing:.06em;
-                     text-transform:uppercase;color:#0b0d10;background:${color};
-                     font-family:Arial,Helvetica,sans-serif">${escapar(datos.severity)}</span>
+      <td style="padding:24px 28px 0">
+        <span style="display:inline-block;padding:5px 12px;border-radius:6px;
+                     font-size:10.5px;font-weight:700;letter-spacing:.09em;
+                     text-transform:uppercase;color:#08090b;background:${color};
+                     ${sans}">${escapar(datos.severity)}</span>
       </td>
     </tr>
     <tr>
-      <td style="padding:10px 24px 4px;color:#e8ebef;font-size:21px;font-weight:bold;
-                 font-family:Arial,Helvetica,sans-serif">
-        Se ha detectado ${tipo}
+      <td style="padding:14px 28px 3px;color:#f2f4f7;font-size:27px;font-weight:700;
+                 letter-spacing:-.02em;line-height:1.2;${sans}">
+        ${tipo}
       </td>
     </tr>
     <tr>
-      <td style="padding:0 24px 18px;color:#8b95a3;font-size:13px;
-                 font-family:Arial,Helvetica,sans-serif">
+      <td style="padding:0 28px 20px;color:#7d8794;font-size:13.5px;${sans}">
         Camara ${escapar(datos.cameraLabel)} &middot; ${escapar(cuando)}
       </td>
     </tr>
     ${imagen}
     <tr>
-      <td style="padding:0 24px 8px">
+      <td style="padding:4px 28px 0">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
           ${fila("Tipo", tipo)}
           ${fila("Camara", escapar(datos.cameraLabel))}
           ${fila("Detectado", escapar(cuando))}
-          ${datos.confidence === null ? "" : fila("Confianza", `${Math.round(datos.confidence * 100)}%`)}
+          ${datos.confidence === null ? "" : fila("Confianza del modelo", `${Math.round(datos.confidence * 100)}%`)}
         </table>
       </td>
     </tr>
+    ${boton}
     ${pie}
     <tr>
-      <td style="padding:14px 24px 20px;border-top:1px solid #1b2027;color:#3d4550;
-                 font-size:11px;font-family:Arial,Helvetica,sans-serif">
+      <td style="padding:24px 28px 22px;color:#39414c;font-size:11.5px;line-height:1.6;
+                 ${sans}">
         Confirmado por el analisis de video. Las sospechas que el verificador
-        descarta no generan aviso.
+        descarta no generan aviso, asi que este correo significa que algo paso.
       </td>
     </tr>
   </table>
@@ -390,6 +419,12 @@ export const dispatch = internalAction({
       openedAt: resumen.openedAt,
       confidence: resumen.confidence,
       evidenceUrl: resumen.evidenceUrl,
+      // El enlace a la ficha del incidente sale de la misma base que la vista
+      // publica, asi solo hay una variable que configurar.
+      incidentUrl:
+        process.env.DEMO_PUBLIC_URL === undefined
+          ? null
+          : `${process.env.DEMO_PUBLIC_URL.replace(/\/demo\/?$/, "")}/incidente?id=${args.incidentId}`,
       demoUrl: process.env.DEMO_PUBLIC_URL ?? null,
     });
 

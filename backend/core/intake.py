@@ -30,6 +30,10 @@ from datetime import datetime, timezone
 
 from .. import config
 
+GIF_ANCHO = 400
+GIF_COLORES = 64
+GIF_FRAMES = 10
+
 TIMEOUT = 8.0
 
 # Su allowlist, ampliada a sev-v2 para cubrir las cuatro verticales.
@@ -129,6 +133,50 @@ class ConvexIntake:
         threading.Thread(target=self._post, args=(event, categoria),
                          name="convex-intake", daemon=True).start()
 
+    def _gif(self, nombres: list[str]) -> bytes | None:
+        """Arma un GIF animado con los frames del incidente.
+
+        Un correo no reproduce video: Gmail elimina la etiqueta <video> y no
+        hay codec que valga. El GIF animado si se mueve en Gmail, Apple Mail y
+        los clientes moviles; Outlook de escritorio ensena el primer frame, que
+        sigue siendo la escena. Es la unica forma de que en el aviso se vea lo
+        que paso y no solo una foto.
+
+        El peso importa mas de lo que parece: la imagen se carga desde el
+        movil de quien esta de guardia, muchas veces con mala cobertura. Un
+        GIF de video real se va facilmente a mas de un mega, asi que se baja a
+        400 px y se cuantiza a 64 colores. Sobre una escena de camara de
+        seguridad la diferencia no se nota y el peso cae a la mitad.
+        """
+        from io import BytesIO
+
+        from PIL import Image
+
+        imagenes = []
+        for nombre in nombres[:GIF_FRAMES]:
+            ruta = config.CLIPS_DIR / nombre
+            if not ruta.exists():
+                continue
+            try:
+                img = Image.open(ruta).convert("RGB")
+            except OSError:
+                continue
+            alto = max(1, round(img.height * GIF_ANCHO / img.width))
+            imagenes.append(
+                img.resize((GIF_ANCHO, alto), Image.LANCZOS)
+                   .quantize(colors=GIF_COLORES, method=Image.MEDIANCUT))
+
+        if len(imagenes) < 2:
+            # Un solo frame no es un clip: mejor caer al JPEG, que se ve mejor.
+            return None
+
+        buf = BytesIO()
+        imagenes[0].save(
+            buf, format="GIF", save_all=True, append_images=imagenes[1:],
+            duration=280, loop=0, optimize=True,
+        )
+        return buf.getvalue()
+
     def _subir_evidencia(self, event) -> list[str]:
         """Sube el mejor fotograma a Convex y devuelve su URL publica.
 
@@ -146,17 +194,33 @@ class ConvexIntake:
         if not self.evidencia_url or not nombres:
             return locales
 
-        # El fotograma del medio es el que suele contener la accion: los
-        # primeros son el antes y los ultimos el despues.
-        ruta = config.CLIPS_DIR / nombres[len(nombres) // 2]
-        if not ruta.exists():
-            return locales
+        # Se prefiere el GIF animado; si no sale, el fotograma del medio, que
+        # es donde suele estar la accion (los primeros son el antes y los
+        # ultimos el despues).
+        try:
+            datos = self._gif(nombres)
+            tipo = "image/gif"
+        except Exception as exc:                       # noqa: BLE001
+            # Pillow puede fallar con un JPEG a medio escribir. No merece
+            # tumbar el envio del incidente.
+            self.last_error = f"gif: {exc}"
+            datos = None
+            tipo = "image/gif"
+
+        if datos is None:
+            ruta = config.CLIPS_DIR / nombres[len(nombres) // 2]
+            if not ruta.exists():
+                return locales
+            try:
+                datos = ruta.read_bytes()
+            except OSError:
+                return locales
+            tipo = "image/jpeg"
 
         try:
-            datos = ruta.read_bytes()
             req = urllib.request.Request(
                 self.evidencia_url, data=datos, method="POST",
-                headers={"Content-Type": "image/jpeg",
+                headers={"Content-Type": tipo,
                          "Authorization": f"Bearer {self.token}"})
             with urllib.request.urlopen(req, timeout=TIMEOUT) as res:
                 url = json.loads(res.read()).get("url")
