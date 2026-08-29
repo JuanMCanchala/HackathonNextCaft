@@ -15,8 +15,11 @@ weights:
   dwell: 0.26
   motion: 0.12
 
-require:
-  concealment: 0.34
+# Sin `require`. Medido sobre 182 clips reales: exigir concealment >= 0.34
+# silenciaba 16 de 92 robos por completo (76 puntuaban con el requisito, 92
+# sin el). Mismo fallo que tenia el dominio de violencia: una puerta AND no
+# baja la puntuacion, la hace invisible, y lo que no ve el gate no lo
+# recupera la Etapa 2.
 
 # Candidata en evaluacion: se mide pero todavia no puntua. El barrido visual
 # separa muy bien en simulacion, pero un cliente que busca un producto
